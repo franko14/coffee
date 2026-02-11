@@ -16,5 +16,23 @@ export function createShopRoutes(shopRepo, productRepo) {
     res.json({ success: true, data: enriched })
   })
 
+  router.put('/:slug/discount', (req, res) => {
+    const { slug } = req.params
+    const { discountPercent, discountCode, enabled } = req.body
+
+    const shop = shopRepo.findBySlug(slug)
+    if (!shop) {
+      return res.status(404).json({ success: false, error: 'Shop not found' })
+    }
+
+    shopRepo.updateDiscount(slug, {
+      discountPercent: discountPercent != null ? parseFloat(discountPercent) : null,
+      discountCode: discountCode || null,
+      enabled: Boolean(enabled)
+    })
+
+    res.json({ success: true })
+  })
+
   return router
 }

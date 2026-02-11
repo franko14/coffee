@@ -28,17 +28,18 @@ export function createProductRepository(db) {
     insert: db.prepare(`
       INSERT INTO products (shop_id, external_id, slug, name, url, image_url, description,
         origin_country, origin_region, process, roast_level, variety, tasting_notes,
-        altitude, is_blend, is_decaf, first_seen_at, last_seen_at)
+        altitude, brewing_method, arabica_percentage, is_blend, is_decaf, first_seen_at, last_seen_at)
       VALUES (@shopId, @externalId, @slug, @name, @url, @imageUrl, @description,
         @originCountry, @originRegion, @process, @roastLevel, @variety, @tastingNotes,
-        @altitude, @isBlend, @isDecaf, @firstSeenAt, @lastSeenAt)
+        @altitude, @brewingMethod, @arabicaPercentage, @isBlend, @isDecaf, @firstSeenAt, @lastSeenAt)
     `),
     update: db.prepare(`
       UPDATE products SET
         name = @name, url = @url, image_url = @imageUrl, description = @description,
         origin_country = @originCountry, origin_region = @originRegion, process = @process,
         roast_level = @roastLevel, variety = @variety, tasting_notes = @tastingNotes,
-        altitude = @altitude, is_blend = @isBlend, is_decaf = @isDecaf,
+        altitude = @altitude, brewing_method = @brewingMethod, arabica_percentage = @arabicaPercentage,
+        is_blend = @isBlend, is_decaf = @isDecaf,
         last_seen_at = @lastSeenAt, is_active = 1, updated_at = datetime('now')
       WHERE id = @id
     `),
@@ -73,12 +74,13 @@ export function createProductRepository(db) {
     },
 
     upsert(product) {
-      const existing = stmts.findBySlug.get(product.shopId, product.slug)
+      const data = { brewingMethod: null, arabicaPercentage: null, ...product }
+      const existing = stmts.findBySlug.get(data.shopId, data.slug)
       const timestamp = now()
 
       if (existing) {
         stmts.update.run({
-          ...product,
+          ...data,
           id: existing.id,
           lastSeenAt: timestamp
         })
@@ -86,7 +88,7 @@ export function createProductRepository(db) {
       }
 
       const info = stmts.insert.run({
-        ...product,
+        ...data,
         firstSeenAt: timestamp,
         lastSeenAt: timestamp
       })

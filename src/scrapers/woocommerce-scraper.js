@@ -73,6 +73,8 @@ export class WooCommerceScraper extends BaseScraper {
       variety: detailAttrs.variety || null,
       tastingNotes: detailAttrs.tastingNotes || attrs.tastingNotes,
       altitude: detailAttrs.altitude || null,
+      brewingMethod: detailAttrs.brewingMethod || attrs.brewingMethod || null,
+      arabicaPercentage: attrs.arabicaPercentage,
       isBlend: attrs.isBlend,
       isDecaf: attrs.isDecaf,
       variants,
@@ -139,6 +141,13 @@ export class WooCommerceScraper extends BaseScraper {
   extractVariants($, ldData) {
     const variants = []
 
+    // Check if entire product is out of stock at page level
+    const pageOutOfStock = this.isPageOutOfStock($)
+
+    // Check for DOM-based sale prices (some plugins apply discounts at render time)
+    const domSalePrice = this.extractSalePriceFromDom($)
+    const domOriginalPrice = this.extractOriginalPriceFromDom($)
+
     const variationForms = $('form.variations_form')
     if (variationForms.length > 0) {
       const variationsData = variationForms.attr('data-product_variations')
@@ -148,13 +157,30 @@ export class WooCommerceScraper extends BaseScraper {
           for (const v of variations) {
             const label = Object.values(v.attributes || {}).join(' ')
             const weight = parseWeight(label) || parseWeight(v.weight_html || '')
+            const jsonPrice = parseFloat(v.display_price) || null
+            const regularPrice = parseFloat(v.display_regular_price) || null
+            const isOnSaleInJson = regularPrice && jsonPrice && regularPrice > jsonPrice
+
+            // Use DOM sale price if JSON shows no sale but DOM does
+            // (common with discount plugins that apply at render time)
+            let price = jsonPrice
+            let originalPrice = isOnSaleInJson ? regularPrice : null
+            if (!isOnSaleInJson && domSalePrice && domOriginalPrice && domOriginalPrice > domSalePrice) {
+              // Only apply if the DOM original matches the JSON price (sanity check)
+              if (Math.abs(domOriginalPrice - jsonPrice) < 0.5) {
+                price = domSalePrice
+                originalPrice = domOriginalPrice
+              }
+            }
+
             variants.push({
               weightGrams: weight,
               grind: this.extractGrindFromLabel(label),
               label,
-              price: parseFloat(v.display_price) || null,
+              price,
+              originalPrice,
               subscriptionPrice: null,
-              inStock: v.is_in_stock !== false,
+              inStock: pageOutOfStock ? false : v.is_in_stock !== false,
               sku: v.sku || null
             })
           }
@@ -171,8 +197,9 @@ export class WooCommerceScraper extends BaseScraper {
           grind: null,
           label: null,
           price: offer.price,
+          originalPrice: null,
           subscriptionPrice: null,
-          inStock: !offer.availability?.includes('OutOfStock'),
+          inStock: pageOutOfStock ? false : !offer.availability?.includes('OutOfStock'),
           sku: offer.sku || null
         })
       }
@@ -180,14 +207,16 @@ export class WooCommerceScraper extends BaseScraper {
 
     if (variants.length === 0) {
       const price = this.extractPriceFromDom($)
+      const originalPrice = this.extractOriginalPriceFromDom($)
       if (price) {
         variants.push({
           weightGrams: this.extractWeightFromPage($),
           grind: null,
           label: null,
           price,
+          originalPrice: originalPrice && originalPrice > price ? originalPrice : null,
           subscriptionPrice: null,
-          inStock: true,
+          inStock: !pageOutOfStock,
           sku: null
         })
       }
@@ -199,6 +228,18 @@ export class WooCommerceScraper extends BaseScraper {
   extractPriceFromDom($) {
     const priceEl = $('p.price ins .amount, p.price .amount, .summary .price .amount').first()
     return parsePrice(priceEl.text())
+  }
+
+  extractSalePriceFromDom($) {
+    // WooCommerce shows sale price in <ins> tag when product is on sale
+    const insEl = $('p.price ins .amount, .summary .price ins .amount').first()
+    return parsePrice(insEl.text())
+  }
+
+  extractOriginalPriceFromDom($) {
+    // WooCommerce shows original price in <del> when product is on sale
+    const delEl = $('p.price del .amount, .summary .price del .amount').first()
+    return parsePrice(delEl.text())
   }
 
   extractWeightFromPage($) {
@@ -248,6 +289,53 @@ export class WooCommerceScraper extends BaseScraper {
     if (href.endsWith('.jpg') || href.endsWith('.png')) return false
     if (href.includes('add-to-cart')) return false
     return this.matchesDomain(href)
+  }
+
+  isPageOutOfStock($) {
+    // Check body class for WooCommerce out-of-stock indicator
+    const bodyClass = $('body').attr('class') || ''
+    if (bodyClass.includes('outofstock')) {
+      return true
+    }
+
+    // Check product container class (WooCommerce adds outofstock class here)
+    const productClass = $('.product, .entry-product, [class*="type-product"]').attr('class') || ''
+    if (productClass.includes('outofstock')) {
+      return true
+    }
+
+    // Check for "Vypredané" badge or text (Slovak for "Sold out")
+    const outOfStockIndicators = [
+      'vypredané',
+      'vypredane',
+      'out of stock',
+      'sold out',
+      'niet na sklade'
+    ]
+
+    // Check stock status element specifically
+    const stockStatus = $('.stock, .availability, .product-stock-status, .out-of-stock').text().toLowerCase()
+    for (const indicator of outOfStockIndicators) {
+      if (stockStatus.includes(indicator)) {
+        return true
+      }
+    }
+
+    // Check product badges for out-of-stock badge
+    const badgeText = $('.product-badges, .entry-product-badges').text().toLowerCase()
+    for (const indicator of outOfStockIndicators) {
+      if (badgeText.includes(indicator)) {
+        return true
+      }
+    }
+
+    // Check if add to cart button is disabled or shows out of stock
+    const addToCartText = $('.single_add_to_cart_button, .add-to-cart-button').text().toLowerCase()
+    if (addToCartText.includes('vypredané') || addToCartText.includes('out of stock')) {
+      return true
+    }
+
+    return false
   }
 
   truncateDescription(text) {

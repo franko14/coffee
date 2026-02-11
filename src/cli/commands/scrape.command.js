@@ -13,6 +13,7 @@ import { createDiscountCodeRepository } from '../../db/repositories/discount-cod
 import { createScrapeRunRepository } from '../../db/repositories/scrape-run.repository.js'
 import { createScraper } from '../../scrapers/scraper-factory.js'
 import { createChildLogger } from '../../utils/logger.js'
+import { now } from '../../utils/date-utils.js'
 
 const log = createChildLogger('scrape-cmd')
 
@@ -63,6 +64,8 @@ export function registerScrapeCommand(program) {
               const result = await scraper.scrape()
               await saveBlogResults(result, blogReviewRepo, discountCodeRepo, stats)
             } else {
+              // Capture timestamp before scraping to identify stale products
+              const scrapeStartTimestamp = now()
               const products = await scraper.scrape()
               stats.productsFound = products.length
 
@@ -70,6 +73,8 @@ export function registerScrapeCommand(program) {
                 printDryRun(products)
               } else {
                 saveProducts(products, shop, productRepo, variantRepo, priceHistoryRepo, ratingRepo, badgeRepo, stats)
+                // Mark variants of products not seen in this scrape as out of stock
+                variantRepo.markStaleProductsOutOfStock(shop.id, scrapeStartTimestamp)
               }
             }
 
@@ -116,20 +121,28 @@ function saveProducts(products, shop, productRepo, variantRepo, priceHistoryRepo
         stats.productsNew++
       }
 
+      const foundVariantIds = []
       for (const variant of product.variants) {
         const result = variantRepo.upsert({ ...variant, productId })
+        foundVariantIds.push(result.id)
 
-        priceHistoryRepo.record({
-          variantId: result.id,
-          price: variant.currentPrice,
-          subscriptionPrice: variant.currentSubscriptionPrice,
-          pricePer100g: variant.pricePer100g
-        })
+        // Only record price history if variant has a valid price
+        if (variant.currentPrice != null) {
+          priceHistoryRepo.record({
+            variantId: result.id,
+            price: variant.currentPrice,
+            subscriptionPrice: variant.currentSubscriptionPrice,
+            pricePer100g: variant.pricePer100g
+          })
+        }
 
         if (result.priceChanged) {
           stats.priceChanges++
         }
       }
+
+      // Mark variants that were not found in this scrape as out of stock
+      variantRepo.markMissingAsOutOfStock(productId, foundVariantIds)
 
       if (product.rating) {
         ratingRepo.record({

@@ -14,18 +14,26 @@ export function createTierCalculator(config) {
 
   return {
     score(product, context) {
-      const { variants, rating, badges, blogReview, allPricesInTier } = context
+      const { variants, rating, badges, blogReview, tierPrices, userDiscount } = context
 
       const bestVariant = selectBestVariant(variants)
       if (!bestVariant) {
         return createEmptyResult(product)
       }
 
-      const priceTier = getPriceTier(bestVariant.price_per_100g, priceTiers)
+      // Calculate effective price considering both sale price and user coupon
+      // Sale price is already reflected in current_price, so we use price_per_100g directly
+      // Then apply user coupon on top
+      const discountMultiplier = userDiscount?.percent ? (1 - userDiscount.percent / 100) : 1
+      const effectivePricePer100g = bestVariant.price_per_100g * discountMultiplier
+
+      const priceTier = getPriceTier(effectivePricePer100g, priceTiers)
+      const tierKey = priceTier?.key || 'midRange'
+      const pricesForTier = tierPrices?.[tierKey] || tierPrices?.all || []
 
       const factors = {
         priceValue: {
-          score: getPriceValueScore(bestVariant.price_per_100g, allPricesInTier || []),
+          score: getPriceValueScore(effectivePricePer100g, pricesForTier),
           weight: weights.priceValue,
           available: true
         },
@@ -133,6 +141,23 @@ export function createTierCalculator(config) {
         })
         .filter((r) => r.score > 0)
         .sort((a, b) => b.score - a.score)
+    },
+
+    scoreAllDiverse(products, contextMap, maxPerShop = 3) {
+      const allScored = this.scoreAll(products, contextMap)
+      const result = []
+      const shopCounts = {}
+
+      for (const item of allScored) {
+        const shop = item.shopSlug || item.shopName
+        const count = shopCounts[shop] || 0
+        if (count < maxPerShop) {
+          result.push(item)
+          shopCounts[shop] = count + 1
+        }
+      }
+
+      return result
     }
   }
 }

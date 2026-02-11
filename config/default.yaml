@@ -8,9 +8,9 @@ scraping:
 shops:
   - slug: triple-five
     name: "Triple Five"
-    url: "https://www.triplefive.sk"
+    url: "https://triplefivecoffee.com"
     scraperKey: triple-five
-    listingPath: "/en/kava/"
+    listingPath: "/kava/"
     hasRatings: false
     hasSubscriptions: false
 

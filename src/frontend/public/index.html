@@ -14,23 +14,106 @@
       <h1>Coffee Monitor</h1>
       <nav>
         <a href="#recommendations" class="nav-link active" data-section="recommendations">Recommendations</a>
+        <a href="#special-offers" class="nav-link" data-section="special-offers">Special Offers</a>
+        <a href="#sale" class="nav-link" data-section="sale">Sale</a>
+        <a href="#compare" class="nav-link" data-section="compare">Compare</a>
         <a href="#products" class="nav-link" data-section="products">Products</a>
+        <a href="#analytics" class="nav-link" data-section="analytics">Analytics</a>
         <a href="#alerts" class="nav-link" data-section="alerts">Alerts <span id="alert-badge" class="badge hidden">0</span></a>
+        <a href="#settings" class="nav-link" data-section="settings">Settings</a>
       </nav>
     </div>
   </header>
 
   <main class="container">
     <section id="recommendations" class="section active">
-      <h2>Best Value Coffees</h2>
-      <div class="tier-filters">
-        <button class="tier-btn active" data-tier="">All Tiers</button>
-        <button class="tier-btn" data-tier="budget">Budget</button>
-        <button class="tier-btn" data-tier="midRange">Mid-range</button>
-        <button class="tier-btn" data-tier="premium">Premium</button>
-        <button class="tier-btn" data-tier="ultraPremium">Ultra-premium</button>
+      <h2>Top 10 Recommendations</h2>
+
+      <div class="scoring-explanation">
+        <button class="scoring-toggle">How we score coffees &#9660;</button>
+        <div id="scoring-details" class="scoring-details">
+          <div class="scoring-grid">
+            <div class="scoring-item">
+              <span class="scoring-weight">30%</span>
+              <span class="scoring-label">Price Value</span>
+              <span class="scoring-desc">How the price compares to similar coffees</span>
+            </div>
+            <div class="scoring-item">
+              <span class="scoring-weight">20%</span>
+              <span class="scoring-label">Rating</span>
+              <span class="scoring-desc">Customer ratings from the shop</span>
+            </div>
+            <div class="scoring-item">
+              <span class="scoring-weight">15%</span>
+              <span class="scoring-label">Origin Quality</span>
+              <span class="scoring-desc">Coffee origin tier (S/A/B/C/D)</span>
+            </div>
+            <div class="scoring-item">
+              <span class="scoring-weight">10%</span>
+              <span class="scoring-label">Blog Score</span>
+              <span class="scoring-desc">Professional cupping scores from blogs</span>
+            </div>
+            <div class="scoring-item">
+              <span class="scoring-weight">10%</span>
+              <span class="scoring-label">Freshness</span>
+              <span class="scoring-desc">How recently the coffee appeared</span>
+            </div>
+            <div class="scoring-item">
+              <span class="scoring-weight">5%</span>
+              <span class="scoring-label">Awards</span>
+              <span class="scoring-desc">Competition awards and accolades</span>
+            </div>
+            <div class="scoring-item">
+              <span class="scoring-weight">5%</span>
+              <span class="scoring-label">Subscription Savings</span>
+              <span class="scoring-desc">Savings available via subscription</span>
+            </div>
+            <div class="scoring-item">
+              <span class="scoring-weight">5%</span>
+              <span class="scoring-label">Special Badges</span>
+              <span class="scoring-desc">Limited edition, seasonal, etc.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="filter-row">
+        <div class="filter-group">
+          <span class="filter-label">Price tier</span>
+          <div class="tier-filters">
+            <button class="tier-btn active" data-tier="">All</button>
+            <button class="tier-btn" data-tier="budget">Budget</button>
+            <button class="tier-btn" data-tier="midRange">Mid-range</button>
+            <button class="tier-btn" data-tier="premium">Premium</button>
+            <button class="tier-btn" data-tier="ultraPremium">Ultra-premium</button>
+          </div>
+        </div>
+        <div class="filter-group">
+          <span class="filter-label">Flavor</span>
+          <div class="flavor-filters" id="flavor-filters">
+            <button class="flavor-btn active" data-flavor="">All</button>
+            <button class="flavor-btn" data-flavor="chocolate">Chocolate / Dark</button>
+            <button class="flavor-btn" data-flavor="fruity">Fruity</button>
+            <button class="flavor-btn" data-flavor="nutty">Nutty</button>
+            <button class="flavor-btn" data-flavor="sweet">Sweet / Honey</button>
+            <button class="flavor-btn" data-flavor="floral">Floral</button>
+            <button class="flavor-btn" data-flavor="spicy">Spicy</button>
+          </div>
+        </div>
       </div>
       <div id="recommendations-list" class="card-grid"></div>
+    </section>
+
+    <section id="special-offers" class="section">
+      <h2>Special Offers</h2>
+      <p class="section-description">New arrivals, limited editions, and special releases from the last 30 days.</p>
+      <div id="special-offers-list" class="card-grid"></div>
+    </section>
+
+    <section id="sale" class="section">
+      <h2>Sale</h2>
+      <p class="section-description">Products currently on sale, with price drops, or subscription discounts.</p>
+      <div id="sale-list" class="card-grid"></div>
     </section>
 
     <section id="products" class="section">
@@ -48,9 +131,57 @@
       <div id="products-list" class="card-grid"></div>
     </section>
 
+    <section id="compare" class="section">
+      <h2>Coffee Comparison Table</h2>
+      <p class="section-description">Compare all coffees side by side. Click column headers to sort.</p>
+      <div class="compare-filters">
+        <select id="compare-shop-filter">
+          <option value="">All Shops</option>
+        </select>
+        <input type="text" id="compare-search" placeholder="Search...">
+        <label class="compare-checkbox"><input type="checkbox" id="compare-in-stock" checked> In stock only</label>
+      </div>
+      <div id="compare-table-container" class="compare-table-container"></div>
+    </section>
+
     <section id="alerts" class="section">
       <h2>Recent Alerts</h2>
       <div id="alerts-list" class="alerts-list"></div>
+    </section>
+
+    <section id="analytics" class="section">
+      <h2>Coffee Analytics</h2>
+
+      <div class="analytics-panel">
+        <h3>Price Map</h3>
+        <p class="section-description">All coffees by price/kg. Each dot is a coffee, colored by roastery. Hover for details.</p>
+        <div id="scatter-container" class="chart-container">
+          <canvas id="scatter-chart" width="900" height="400"></canvas>
+        </div>
+      </div>
+
+      <div class="analytics-panel">
+        <h3>Price History Comparison</h3>
+        <p class="section-description">Select coffees to compare their price history over time.</p>
+        <div class="analytics-filters">
+          <input type="text" id="history-search" placeholder="Search coffee to add...">
+          <div id="history-selected" class="history-selected-chips"></div>
+        </div>
+        <div id="history-suggestions" class="history-suggestions hidden"></div>
+        <div id="history-compare-container" class="chart-container">
+          <canvas id="history-compare-chart" width="900" height="400"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <section id="settings" class="section">
+      <h2>Settings</h2>
+
+      <div class="settings-panel">
+        <h3>Shop Discounts</h3>
+        <p class="section-description">Set personal discount codes or coupons for specific shops. These will be applied when calculating effective prices.</p>
+        <div id="shop-discounts-list" class="shop-discounts-list"></div>
+      </div>
     </section>
 
     <section id="product-detail" class="section">
@@ -67,7 +198,12 @@
   <script src="/scripts/products.js"></script>
   <script src="/scripts/product-detail.js"></script>
   <script src="/scripts/recommendations.js"></script>
+  <script src="/scripts/special-offers.js"></script>
+  <script src="/scripts/sale.js"></script>
+  <script src="/scripts/compare.js"></script>
   <script src="/scripts/price-chart.js"></script>
+  <script src="/scripts/analytics.js"></script>
   <script src="/scripts/filters.js"></script>
+  <script src="/scripts/settings.js"></script>
 </body>
 </html>

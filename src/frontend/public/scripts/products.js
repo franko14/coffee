@@ -1,5 +1,10 @@
 /* global api, esc, navigateTo */
 
+function shopInitials(name) {
+  if (!name) return '?'
+  return name.split(/[\s.]+/).map((w) => w[0]).join('').toUpperCase().slice(0, 2)
+}
+
 async function loadProducts() {
   const container = document.getElementById('products-list')
   container.innerHTML = '<div class="loading">Loading products...</div>'
@@ -30,23 +35,62 @@ async function loadProducts() {
     }
 
     container.innerHTML = items.map((p) => {
-      const price = p.cheapestPrice ? `${p.cheapestPrice.toFixed(2)} \u20ac` : 'N/A'
-      const per100g = p.cheapestPricePer100g ? `${p.cheapestPricePer100g.toFixed(2)} \u20ac/100g` : ''
-      const weight = p.cheapestWeight ? `${p.cheapestWeight}g` : ''
+      const perKg = p.pricePerKg ? `${p.pricePerKg.toFixed(2)} \u20ac/kg` : 'N/A'
+      const imgSrc = p.image_url || '/images/placeholder-coffee.svg'
 
       const tags = []
       if (p.origin_country) tags.push(`<span class="tag origin">${esc(p.origin_country)}</span>`)
       if (p.process) tags.push(`<span class="tag process">${esc(p.process)}</span>`)
 
+      // Check if product is out of stock (no in-stock variants)
+      const hasInStockVariants = (p.variants || []).some((v) => v.inStock)
+      const outOfStockBadge = !hasInStockVariants ? '<div class="out-of-stock-badge">OUT OF STOCK</div>' : ''
+
+      // Stacked badges: OUT OF STOCK or SALE on top (red), coupon below (green)
+      const saleBadge = hasInStockVariants && p.discount
+        ? `<div class="sale-badge">SALE -${p.discount.percentage}%</div>`
+        : ''
+
+      // Calculate effective price with user's coupon
+      const ud = p.userDiscount
+      let priceHtml = perKg
+      if (ud && p.pricePerKg) {
+        const effectivePerKg = p.pricePerKg * (1 - ud.percent / 100)
+        priceHtml = `<span class="effective-price">${effectivePerKg.toFixed(2)} \u20ac/kg</span> <span class="original-price-small">${perKg}</span>`
+      }
+
+      const variantChips = (p.variants || [])
+        .filter((v) => v.inStock && v.weightGrams)
+        .map((v) => {
+          const label = v.weightGrams >= 1000 ? `${v.weightGrams / 1000}kg` : `${v.weightGrams}g`
+          if (ud && v.price) {
+            const effectivePrice = v.price * (1 - ud.percent / 100)
+            return `<span class="variant-chip">${label} <span class="effective-price">${effectivePrice.toFixed(2)} \u20ac</span></span>`
+          }
+          return `<span class="variant-chip">${label} ${v.price ? v.price.toFixed(2) + ' \u20ac' : ''}</span>`
+        })
+        .join('')
+
+      const couponBadge = hasInStockVariants && ud ? `<div class="coupon-badge ${p.discount ? 'with-sale' : ''}" title="Code: ${esc(ud.code || 'N/A')}">-${ud.percent}%</div>` : ''
+
       return `
-        <div class="product-card" data-section="product-detail" data-id="${p.id}">
-          <div class="card-header">
-            <div class="card-name">${esc(p.name)}</div>
+        <div class="product-card ${!hasInStockVariants ? 'out-of-stock' : ''}" data-section="product-detail" data-id="${p.id}">
+          <div class="card-image-container">
+            <img src="${esc(imgSrc)}" alt="${esc(p.name)}" class="card-image" onerror="this.src='/images/placeholder-coffee.svg'">
+            <div class="shop-badge">${esc(shopInitials(p.shop_name))}</div>
+            ${outOfStockBadge}
+            ${saleBadge}
+            ${couponBadge}
           </div>
-          <div class="card-shop">${esc(p.shop_name)}</div>
-          <div class="card-price">${price} / ${weight}</div>
-          <div class="card-price-detail">${per100g}</div>
-          <div class="card-meta">${tags.join('')}</div>
+          <div class="card-body">
+            <div class="card-header">
+              <div class="card-name">${esc(p.name)}</div>
+            </div>
+            <div class="card-shop">${esc(p.shop_name)}</div>
+            <div class="card-price">${priceHtml}</div>
+            ${variantChips ? `<div class="variant-chips">${variantChips}</div>` : ''}
+            <div class="card-meta">${tags.join('')}</div>
+          </div>
         </div>
       `
     }).join('')

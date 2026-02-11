@@ -15,6 +15,14 @@ export function createShopRepository(db) {
         has_subscriptions = excluded.has_subscriptions,
         is_blog = excluded.is_blog,
         updated_at = datetime('now')
+    `),
+    updateDiscount: db.prepare(`
+      UPDATE shops SET
+        user_discount_percent = @discountPercent,
+        user_discount_code = @discountCode,
+        user_discount_enabled = @enabled,
+        updated_at = datetime('now')
+      WHERE slug = @slug
     `)
   }
 
@@ -61,6 +69,15 @@ export function createShopRepository(db) {
         }
       })
       upsertMany(shops)
+    },
+
+    updateDiscount(slug, { discountPercent, discountCode, enabled }) {
+      stmts.updateDiscount.run({
+        slug,
+        discountPercent: discountPercent || null,
+        discountCode: discountCode || null,
+        enabled: enabled ? 1 : 0
+      })
     }
   }
 }

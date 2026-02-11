@@ -78,9 +78,27 @@ function normalizeOffers(offers) {
 }
 
 function parseOffer(offer) {
+  // Try direct price first, then check priceSpecification array
+  let price = parseFloat(offer.price) || null
+  let currency = offer.priceCurrency || 'EUR'
+
+  // Some sites use priceSpecification instead of direct price
+  if (!price && offer.priceSpecification) {
+    const specs = Array.isArray(offer.priceSpecification)
+      ? offer.priceSpecification
+      : [offer.priceSpecification]
+    for (const spec of specs) {
+      if (spec.price) {
+        price = parseFloat(spec.price) || null
+        currency = spec.priceCurrency || currency
+        break
+      }
+    }
+  }
+
   return {
-    price: parseFloat(offer.price) || null,
-    currency: offer.priceCurrency || 'EUR',
+    price,
+    currency,
     availability: offer.availability || null,
     url: offer.url || null,
     sku: offer.sku || null

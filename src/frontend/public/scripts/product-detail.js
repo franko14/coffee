@@ -17,6 +17,16 @@ async function showProductDetail(productId) {
     ].filter((a) => a.value)
 
     const tastingNotes = parseTastingNotes(p.tasting_notes)
+    const ud = p.userDiscount
+
+    // Coupon banner if user has a discount for this shop
+    const couponBannerHtml = ud ? `
+      <div class="coupon-banner">
+        <span class="coupon-icon">\uD83C\uDFF7\uFE0F</span>
+        Your coupon: <strong>-${ud.percent}%</strong>
+        ${ud.code ? ` (code: <code>${esc(ud.code)}</code>)` : ''}
+      </div>
+    ` : ''
 
     const variantsHtml = p.variants.length > 0 ? `
       <table class="variants-table">
@@ -25,20 +35,42 @@ async function showProductDetail(productId) {
             <th>Weight</th>
             <th>Grind</th>
             <th>Price</th>
+            ${ud ? '<th>Your Price</th>' : ''}
             <th>Per 100g</th>
             <th>Stock</th>
           </tr>
         </thead>
         <tbody>
-          ${p.variants.map((v) => `
-            <tr>
+          ${p.variants.map((v) => {
+    const isOnSale = v.original_price && v.original_price > v.current_price
+    const priceHtml = v.current_price
+      ? (isOnSale
+        ? `<span class="original-price">${v.original_price.toFixed(2)} \u20ac</span> <span class="sale-price">${v.current_price.toFixed(2)} \u20ac</span>`
+        : `${v.current_price.toFixed(2)} \u20ac`)
+      : '-'
+    const subscriptionHtml = v.current_subscription_price
+      ? `<br><small>${v.current_subscription_price.toFixed(2)} \u20ac sub</small>`
+      : ''
+
+    // Calculate effective price with user's coupon
+    const effectivePrice = ud && v.current_price
+      ? (v.current_price * (1 - ud.percent / 100)).toFixed(2) + ' \u20ac'
+      : null
+    const effectivePer100g = ud && v.price_per_100g
+      ? (v.price_per_100g * (1 - ud.percent / 100)).toFixed(2) + ' \u20ac'
+      : null
+
+    return `
+            <tr class="${isOnSale ? 'on-sale' : ''}">
               <td>${v.weight_grams ? v.weight_grams + 'g' : '-'}</td>
               <td>${esc(v.grind || 'whole bean')}</td>
-              <td>${v.current_price ? v.current_price.toFixed(2) + ' \u20ac' : '-'}${v.current_subscription_price ? `<br><small>${v.current_subscription_price.toFixed(2)} \u20ac sub</small>` : ''}</td>
-              <td>${v.price_per_100g ? v.price_per_100g.toFixed(2) + ' \u20ac' : '-'}</td>
+              <td>${priceHtml}${subscriptionHtml}</td>
+              ${ud ? `<td class="effective-price-cell">${effectivePrice || '-'}</td>` : ''}
+              <td>${v.price_per_100g ? v.price_per_100g.toFixed(2) + ' \u20ac' : '-'}${effectivePer100g ? `<br><span class="effective-price-small">${effectivePer100g}</span>` : ''}</td>
               <td>${v.in_stock ? '\u2705' : '\u274c'}</td>
             </tr>
-          `).join('')}
+          `
+  }).join('')}
         </tbody>
       </table>
     ` : ''
@@ -51,6 +83,7 @@ async function showProductDetail(productId) {
     ` : ''
 
     container.innerHTML = `
+      ${couponBannerHtml}
       <div class="detail-header">
         ${p.image_url ? `<img src="${esc(p.image_url)}" alt="${esc(p.name)}" class="detail-image">` : ''}
         <div class="detail-info">

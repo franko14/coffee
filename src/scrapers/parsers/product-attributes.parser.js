@@ -89,6 +89,35 @@ export function detectDecaf(text) {
   return /decaf|bezkofe[ií]nov/i.test(text)
 }
 
+export function parseArabicaPercentage(text) {
+  if (!text) return null
+
+  const match = text.match(/(\d+)\s*%\s*arabica/i)
+    || text.match(/(\d+)\s*%\s*arabika/i)
+    || text.match(/arabica\s*(\d+)\s*%/i)
+    || text.match(/arabika\s*(\d+)\s*%/i)
+  if (match) return parseInt(match[1], 10)
+
+  if (/100\s*%\s*(?:arabica|arabika)/i.test(text)) return 100
+  if (/\b(?:single\s*origin|jednodruhov)/i.test(text)) return 100
+  if (/\b(?:robusta)\b/i.test(text) && !/arabica|arabika/i.test(text)) return 0
+
+  return null
+}
+
+export function parseBrewingMethod(text) {
+  if (!text) return null
+  const lower = text.toLowerCase()
+  const methods = []
+
+  if (/\(filter\)|na filter|filtrov/i.test(lower)) methods.push('filter')
+  if (/\(espresso\)|na espresso|espresso\s*blend/i.test(lower)) methods.push('espresso')
+  if (/\(omni\)|omni/i.test(lower)) methods.push('omni')
+  if (/mok[ua]|moka/i.test(lower)) methods.push('moka')
+
+  return methods.length > 0 ? methods.join(', ') : null
+}
+
 export function parseProductAttributes(text) {
   return {
     origin: parseOrigin(text),
@@ -96,6 +125,8 @@ export function parseProductAttributes(text) {
     roastLevel: parseRoastLevel(text),
     tastingNotes: parseTastingNotes(text),
     isBlend: detectBlend(text),
-    isDecaf: detectDecaf(text)
+    isDecaf: detectDecaf(text),
+    arabicaPercentage: parseArabicaPercentage(text),
+    brewingMethod: parseBrewingMethod(text)
   }
 }

@@ -91,15 +91,20 @@ export function registerMonitorCommand(program) {
                     allAlerts.push(alert)
                   }
 
+                  const foundVariantIds = []
                   for (const variant of product.variants) {
                     const result = variantRepo.upsert({ ...variant, productId })
+                    foundVariantIds.push(result.id)
 
-                    priceHistoryRepo.record({
-                      variantId: result.id,
-                      price: variant.currentPrice,
-                      subscriptionPrice: variant.currentSubscriptionPrice,
-                      pricePer100g: variant.pricePer100g
-                    })
+                    // Only record price history if variant has a valid price
+                    if (variant.currentPrice != null) {
+                      priceHistoryRepo.record({
+                        variantId: result.id,
+                        price: variant.currentPrice,
+                        subscriptionPrice: variant.currentSubscriptionPrice,
+                        pricePer100g: variant.pricePer100g
+                      })
+                    }
 
                     if (result.priceChanged) {
                       stats.priceChanges++
@@ -113,6 +118,9 @@ export function registerMonitorCommand(program) {
                       allAlerts.push(...priceAlerts)
                     }
                   }
+
+                  // Mark variants that were not found in this scrape as out of stock
+                  variantRepo.markMissingAsOutOfStock(productId, foundVariantIds)
 
                   if (product.rating) {
                     ratingRepo.record({

@@ -5,23 +5,26 @@ export function createAlertRepository(db) {
       VALUES (@alertType, @severity, @shopSlug, @productId, @title, @message, @data)
     `),
     findAll: db.prepare(`
-      SELECT a.*, p.name as product_name
+      SELECT a.*, p.name as product_name, p.image_url as product_image, s.name as shop_name, s.slug as shop_slug_join
       FROM alerts a
       LEFT JOIN products p ON a.product_id = p.id
+      LEFT JOIN shops s ON p.shop_id = s.id
       ORDER BY a.created_at DESC
       LIMIT ?
     `),
     findUnread: db.prepare(`
-      SELECT a.*, p.name as product_name
+      SELECT a.*, p.name as product_name, p.image_url as product_image, s.name as shop_name, s.slug as shop_slug_join
       FROM alerts a
       LEFT JOIN products p ON a.product_id = p.id
+      LEFT JOIN shops s ON p.shop_id = s.id
       WHERE a.is_read = 0
       ORDER BY a.created_at DESC
     `),
     findByType: db.prepare(`
-      SELECT a.*, p.name as product_name
+      SELECT a.*, p.name as product_name, p.image_url as product_image, s.name as shop_name, s.slug as shop_slug_join
       FROM alerts a
       LEFT JOIN products p ON a.product_id = p.id
+      LEFT JOIN shops s ON p.shop_id = s.id
       WHERE a.alert_type = ?
       ORDER BY a.created_at DESC
       LIMIT ?
