@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coffee Monitor</title>
+  <link rel="stylesheet" href="/styles/main.css">
+  <link rel="stylesheet" href="/styles/products.css">
+  <link rel="stylesheet" href="/styles/recommendations.css">
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1>Coffee Monitor</h1>
+      <nav>
+        <a href="#recommendations" class="nav-link active" data-section="recommendations">Recommendations</a>
+        <a href="#products" class="nav-link" data-section="products">Products</a>
+        <a href="#alerts" class="nav-link" data-section="alerts">Alerts <span id="alert-badge" class="badge hidden">0</span></a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section id="recommendations" class="section active">
+      <h2>Best Value Coffees</h2>
+      <div class="tier-filters">
+        <button class="tier-btn active" data-tier="">All Tiers</button>
+        <button class="tier-btn" data-tier="budget">Budget</button>
+        <button class="tier-btn" data-tier="midRange">Mid-range</button>
+        <button class="tier-btn" data-tier="premium">Premium</button>
+        <button class="tier-btn" data-tier="ultraPremium">Ultra-premium</button>
+      </div>
+      <div id="recommendations-list" class="card-grid"></div>
+    </section>
+
+    <section id="products" class="section">
+      <h2>All Products</h2>
+      <div class="filters">
+        <select id="shop-filter">
+          <option value="">All Shops</option>
+        </select>
+        <select id="sort-filter">
+          <option value="name">Sort by Name</option>
+          <option value="price">Sort by Price</option>
+        </select>
+        <input type="text" id="search-input" placeholder="Search coffees...">
+      </div>
+      <div id="products-list" class="card-grid"></div>
+    </section>
+
+    <section id="alerts" class="section">
+      <h2>Recent Alerts</h2>
+      <div id="alerts-list" class="alerts-list"></div>
+    </section>
+
+    <section id="product-detail" class="section">
+      <a href="#products" class="back-link" data-section="products">&larr; Back to products</a>
+      <div id="detail-content"></div>
+      <div id="price-chart-container">
+        <h3>Price History</h3>
+        <canvas id="price-chart" width="800" height="300"></canvas>
+      </div>
+    </section>
+  </main>
+
+  <script src="/scripts/app.js"></script>
+  <script src="/scripts/products.js"></script>
+  <script src="/scripts/product-detail.js"></script>
+  <script src="/scripts/recommendations.js"></script>
+  <script src="/scripts/price-chart.js"></script>
+  <script src="/scripts/filters.js"></script>
+</body>
+</html>

@@ -1,0 +1,140 @@
+scraping:
+  rateLimitMs: 1500
+  retryAttempts: 3
+  retryBackoffMs: 1000
+  userAgent: "CoffeeMonitor/1.0 (personal-use)"
+  timeoutMs: 15000
+
+shops:
+  - slug: triple-five
+    name: "Triple Five"
+    url: "https://www.triplefive.sk"
+    scraperKey: triple-five
+    listingPath: "/en/kava/"
+    hasRatings: false
+    hasSubscriptions: false
+
+  - slug: black-sk
+    name: "Black.sk"
+    url: "https://black.sk"
+    scraperKey: black-sk
+    listingPath: "/sk/e-shop/kava"
+    hasRatings: false
+    hasSubscriptions: false
+
+  - slug: goriffee
+    name: "Goriffee"
+    url: "https://goriffee.com"
+    scraperKey: goriffee
+    listingPath: "/obchod/vyberova-kava/"
+    hasRatings: true
+    hasSubscriptions: true
+
+  - slug: zlate-zrnko
+    name: "Zlaté Zrnko"
+    url: "https://www.zlatezrnko.sk"
+    scraperKey: zlate-zrnko
+    listingPath: "/kategoria/kava/"
+    hasRatings: true
+    hasSubscriptions: false
+
+  - slug: blog-okave
+    name: "Blog o Kave"
+    url: "https://blogokave.sk"
+    scraperKey: blog-okave
+    listingPath: "/"
+    hasRatings: false
+    hasSubscriptions: false
+    isBlog: true
+
+scoring:
+  weights:
+    priceValue: 0.30
+    rating: 0.20
+    originQuality: 0.15
+    blogScore: 0.10
+    freshness: 0.10
+    awards: 0.05
+    subscriptionSavings: 0.05
+    specialBadges: 0.05
+
+  priceTiers:
+    budget:
+      maxPerKg: 15
+      label: "Budget"
+    midRange:
+      maxPerKg: 30
+      label: "Mid-range"
+    premium:
+      maxPerKg: 50
+      label: "Premium"
+    ultraPremium:
+      maxPerKg: 999
+      label: "Ultra-premium"
+
+  freshnessWindowDays: 90
+
+  originTiers:
+    S:
+      score: 100
+      countries:
+        - Ethiopia
+        - Kenya
+        - Panama
+        - Colombia
+        - Guatemala
+        - Costa Rica
+    A:
+      score: 85
+      countries:
+        - Brazil
+        - Honduras
+        - El Salvador
+        - Rwanda
+        - Burundi
+        - Peru
+    B:
+      score: 70
+      countries:
+        - Indonesia
+        - Mexico
+        - Nicaragua
+        - Tanzania
+        - Uganda
+        - Myanmar
+    C:
+      score: 55
+      countries:
+        - India
+        - Papua New Guinea
+        - Dominican Republic
+        - Bolivia
+        - Ecuador
+    D:
+      score: 40
+      countries:
+        - Vietnam
+        - China
+        - Philippines
+        - Thailand
+
+alerts:
+  priceDrop:
+    minPercentage: 5
+    severity: info
+  newProduct:
+    severity: info
+  stockChange:
+    severity: low
+  discountCode:
+    severity: info
+
+server:
+  port: 3000
+  host: "localhost"
+
+database:
+  path: "data/coffee.db"
+
+logging:
+  level: "info"
