@@ -75,7 +75,7 @@ beforeAll(() => {
 
   const app = express()
   app.use(express.json())
-  app.use('/api/recommendations', createRecommendationRoutes(productRepo, variantRepo, ratingRepo, badgeRepo, blogReviewRepo, config))
+  app.use('/api/recommendations', createRecommendationRoutes(productRepo, variantRepo, ratingRepo, badgeRepo, blogReviewRepo, config, shopRepo))
   app.use('/api/price-history', createPriceHistoryRoutes(priceHistoryRepo))
 
   return new Promise((resolve) => {

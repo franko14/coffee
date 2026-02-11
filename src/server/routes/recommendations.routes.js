@@ -1,34 +1,39 @@
 import { Router } from 'express'
+import { z } from 'zod'
 import { createTierCalculator } from '../../scoring/tier-calculator.js'
 import { getPriceTier } from '../../scoring/price-tiers.js'
 import { classifyFlavor, getFlavorCategories, extractCleanTastingNotes } from '../../scoring/flavor-classifier.js'
+import { groupByKey } from '../../utils/group-by.js'
+import { mapVariantToDto } from '../../utils/variant-mapper.js'
+import { buildShopDiscountMap } from '../../utils/shop-discounts.js'
 
 export function createRecommendationRoutes(productRepo, variantRepo, ratingRepo, badgeRepo, blogReviewRepo, config, shopRepo) {
   const router = Router()
   const calculator = createTierCalculator(config)
   const { priceTiers } = config.scoring
 
-  // Build a map of shop discounts for quick lookup
-  function getShopDiscounts() {
-    const shops = shopRepo.findAll()
-    const discountMap = new Map()
-    for (const shop of shops) {
-      if (shop.user_discount_enabled && shop.user_discount_percent > 0) {
-        discountMap.set(shop.id, {
-          percent: shop.user_discount_percent,
-          code: shop.user_discount_code
-        })
-      }
-    }
-    return discountMap
-  }
+  const recommendationsQuerySchema = z.object({
+    top: z.string().transform((val) => parseInt(val, 10)).pipe(z.number().min(1).max(100)).optional(),
+    tier: z.enum(['budget', 'midRange', 'premium', 'ultraPremium']).optional(),
+    budget: z.string().transform((val) => parseFloat(val)).pipe(z.number().positive()).optional(),
+    flavor: z.enum(['chocolate', 'fruity', 'floral', 'nutty', 'sweet', 'spicy']).optional()
+  })
 
   router.get('/flavors', (_req, res) => {
     res.json({ success: true, data: getFlavorCategories() })
   })
 
   router.get('/', (req, res) => {
-    const { top = '20', tier, budget, flavor } = req.query
+    const validation = recommendationsQuerySchema.safeParse(req.query)
+    if (!validation.success) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid query parameters',
+        details: validation.error.errors
+      })
+    }
+
+    const { top = 20, tier, budget, flavor } = validation.data
 
     let products = productRepo.findAll()
 
@@ -43,13 +48,26 @@ export function createRecommendationRoutes(productRepo, variantRepo, ratingRepo,
     const contextMap = new Map()
     const ratingMap = new Map()
     const badgeMap = new Map()
-    const shopDiscounts = getShopDiscounts()
+    const shopDiscounts = buildShopDiscountMap(shopRepo)
+
+    // Batch fetch all data
+    const productIds = products.map((p) => p.id)
+    const allVariants = variantRepo.findByProducts(productIds)
+    const allRatings = ratingRepo.findLatestByProducts(productIds)
+    const allBadges = badgeRepo.findByProducts(productIds)
+    const allBlogMatches = blogReviewRepo.findMatchesByProducts(productIds)
+
+    // Build maps for quick lookup
+    const variantsMap = groupByKey(allVariants, (v) => v.product_id)
+    const ratingsMapById = new Map(allRatings.map((r) => [r.product_id, r]))
+    const badgesMapById = groupByKey(allBadges, (b) => b.product_id)
+    const blogMatchesMap = groupByKey(allBlogMatches, (m) => m.product_id)
 
     for (const product of products) {
-      const variants = variantRepo.findByProduct(product.id)
-      const rating = ratingRepo.findLatestByProduct(product.id)
-      const badges = badgeRepo.findByProduct(product.id)
-      const blogMatches = blogReviewRepo.findMatchesByProduct(product.id)
+      const variants = variantsMap.get(product.id) || []
+      const rating = ratingsMapById.get(product.id) || null
+      const badges = badgesMapById.get(product.id) || []
+      const blogMatches = blogMatchesMap.get(product.id) || []
       const blogReview = blogMatches.length > 0 ? blogMatches[0] : null
       const userDiscount = shopDiscounts.get(product.shop_id) || null
 
@@ -67,43 +85,33 @@ export function createRecommendationRoutes(productRepo, variantRepo, ratingRepo,
       }
 
       if (rating) ratingMap.set(product.id, rating)
-      if (badges) badgeMap.set(product.id, badges)
+      if (badges.length > 0) badgeMap.set(product.id, badges)
 
       contextMap.set(product.id, { variants, rating, badges, blogReview, tierPrices: null, userDiscount })
     }
 
-    for (const [, ctx] of contextMap) {
-      ctx.tierPrices = tierPricesMap
+    const enrichedContextMap = new Map()
+    for (const [id, ctx] of contextMap) {
+      enrichedContextMap.set(id, { ...ctx, tierPrices: tierPricesMap })
     }
 
-    let scored = calculator.scoreAllDiverse(products, contextMap, 3)
+    let scored = calculator.scoreAllDiverse(products, enrichedContextMap, 3)
 
     if (tier) {
       scored = scored.filter((r) => r.priceTierKey === tier)
     }
 
     if (budget) {
-      const maxBudget = parseFloat(budget)
       scored = scored.filter(
-        (r) => r.bestVariant?.pricePer100g && r.bestVariant.pricePer100g <= maxBudget
+        (r) => r.bestVariant?.pricePer100g && r.bestVariant.pricePer100g <= budget
       )
     }
 
-    const results = scored.slice(0, parseInt(top, 10)).map((r) => {
+    const results = scored.slice(0, top).map((r) => {
       const rating = ratingMap.get(r.productId)
       const badges = badgeMap.get(r.productId) || []
-      const ctx = contextMap.get(r.productId)
-      const variants = (ctx?.variants || []).map((v) => ({
-        weightGrams: v.weight_grams,
-        price: v.current_price,
-        pricePer100g: v.price_per_100g,
-        pricePerKg: v.price_per_100g ? Math.round(v.price_per_100g * 10 * 100) / 100 : null,
-        inStock: v.in_stock,
-        grind: v.grind,
-        label: v.label,
-        originalPrice: v.original_price,
-        subscriptionPrice: v.current_subscription_price
-      }))
+      const ctx = enrichedContextMap.get(r.productId)
+      const variants = (ctx?.variants || []).map(mapVariantToDto)
 
       const product = products.find((p) => p.id === r.productId)
       const flavorCategories = classifyFlavor(product)

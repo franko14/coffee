@@ -2,31 +2,9 @@ import * as cheerio from 'cheerio'
 import { BaseScraper } from '../base-scraper.js'
 import { parsePrice, parseWeight } from '../parsers/price.parser.js'
 import { parseProductAttributes } from '../parsers/product-attributes.parser.js'
-
-const COUNTRY_NAME_MAP = {
-  colombia: 'Colombia',
-  brazil: 'Brazil',
-  ethiopia: 'Ethiopia',
-  'east java': 'Indonesia',
-  rwanda: 'Rwanda',
-  'costa rica': 'Costa Rica',
-  kenya: 'Kenya',
-  guatemala: 'Guatemala',
-  'el salvador': 'El Salvador',
-  peru: 'Peru',
-  honduras: 'Honduras',
-  india: 'India',
-  indonesia: 'Indonesia',
-  mexico: 'Mexico',
-  burundi: 'Burundi',
-  tanzania: 'Tanzania',
-  panama: 'Panama',
-  nicaragua: 'Nicaragua',
-  bolivia: 'Bolivia',
-  vietnam: 'Vietnam',
-  uganda: 'Uganda',
-  congo: 'Congo'
-}
+import { COUNTRY_NAME_MAP } from '../parsers/country-map.js'
+import { parseAttributeTable } from '../parsers/attribute-table.parser.js'
+import { DEFAULT_WEIGHT_GRAMS, MAX_DESCRIPTION_LENGTH } from '../constants.js'
 
 const NON_PRODUCT_SLUGS = new Set([
   'kava', 'merch', 'doplnky', 'kurzy',
@@ -76,7 +54,7 @@ export class BlackScraper extends BaseScraper {
     if (!name) return null
 
     const description = $('.ps-product__desc, .ps-product__content').first().text().trim()
-    const tableAttrs = this.extractTableAttributes($)
+    const tableAttrs = parseAttributeTable($, '.ps-table--product-info tr, table.ps-table tr')
 
     // Parse origin country from name pattern "country • product-name"
     const nameOrigin = this.parseOriginFromName(name)
@@ -88,7 +66,7 @@ export class BlackScraper extends BaseScraper {
     const fullText = `${name} ${description || ''}`
     const attrs = parseProductAttributes(fullText)
 
-    const weight = parseWeight(name) || parseWeight(description || '') || 250
+    const weight = parseWeight(name) || parseWeight(description || '') || DEFAULT_WEIGHT_GRAMS
 
     const imageUrl = $('.ps-product__gallery img, .ps-product__thumbnail img')
       .first().attr('src')
@@ -99,7 +77,7 @@ export class BlackScraper extends BaseScraper {
     return {
       name,
       imageUrl: imageUrl ? (imageUrl.startsWith('http') ? imageUrl : `${this.shop.url}${imageUrl}`) : null,
-      description: description ? description.slice(0, 500) : null,
+      description: description ? description.slice(0, MAX_DESCRIPTION_LENGTH) : null,
       originCountry: nameOrigin.country || tableAttrs.country || attrs.origin.country,
       originRegion: tableAttrs.region || nameOrigin.region || attrs.origin.region,
       process: tableAttrs.process || attrs.process,
@@ -175,6 +153,9 @@ export class BlackScraper extends BaseScraper {
 
     const isInStock = !$('.out-of-stock, .sold-out, .ps-product__unavailable').length
 
+    // Extract original (strikethrough) price for sale tracking
+    const originalPrice = this.extractOriginalPrice($, basePrice)
+
     if (sizeOptions.length > 0) {
       for (const opt of sizeOptions) {
         variants.push({
@@ -182,6 +163,7 @@ export class BlackScraper extends BaseScraper {
           grind: null,
           label: opt.label,
           price: basePrice,
+          originalPrice,
           subscriptionPrice: null,
           inStock: isInStock,
           sku: null
@@ -195,6 +177,7 @@ export class BlackScraper extends BaseScraper {
         grind: null,
         label: null,
         price: basePrice,
+        originalPrice,
         subscriptionPrice: null,
         inStock: isInStock,
         sku: null
@@ -202,6 +185,18 @@ export class BlackScraper extends BaseScraper {
     }
 
     return variants
+  }
+
+  extractOriginalPrice($, currentPrice) {
+    // Shoptet shows original price in strikethrough (<del>, <s>, or .ps-product__price--original)
+    const delEl = $(
+      '.ps-product__price del, .ps-product__price s, .ps-product__price--original, .ps-product__price .before-discount'
+    ).first()
+    const origPrice = parsePrice(delEl.text())
+    if (origPrice && currentPrice && origPrice > currentPrice) {
+      return origPrice
+    }
+    return null
   }
 
   extractRoastTypes($) {
@@ -213,30 +208,6 @@ export class BlackScraper extends BaseScraper {
       if (text.includes('omni')) types.push('omni')
     })
     return [...new Set(types)]
-  }
-
-  extractTableAttributes($) {
-    const attrs = {}
-
-    $('.ps-table--product-info tr, table.ps-table tr').each((_, el) => {
-      const label = $(el).find('td:first-child').text().toLowerCase().trim()
-      const value = $(el).find('td:last-child').text().trim()
-      if (!label || !value || label === value) return
-
-      if (/varieta|variety|odroda/.test(label)) attrs.variety = value
-      if (/spracovanie|process/.test(label)) attrs.process = value
-      if (/pra[žz]enie|roast/.test(label)) attrs.roastLevel = value
-      if (/region|regi[óo]n|oblast|oblasť/.test(label)) attrs.region = value
-      if (/nadmorsk|altitude|elevation/.test(label)) attrs.altitude = value
-      if (/origin|p[ôo]vod|country|krajina/.test(label)) {
-        const parts = value.split(/[,/]/)
-        attrs.country = parts[0]?.trim()
-        if (parts[1]) attrs.region = attrs.region || parts[1].trim()
-      }
-      if (/chu[tť]|tasting|notes|profil/.test(label)) attrs.tastingNotes = value
-    })
-
-    return attrs
   }
 
   extractBadges($) {

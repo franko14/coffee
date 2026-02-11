@@ -1,4 +1,4 @@
-/* global api */
+/* global api, esc, shopInitials, renderVariantChips, renderSkeleton, renderEmptyState */
 
 let currentTier = ''
 let currentFlavor = ''
@@ -22,16 +22,11 @@ function renderStars(score, maxScore) {
   return '\u2605'.repeat(full) + (half ? '\u2606' : '') + '\u2606'.repeat(empty)
 }
 
-function recShopInitials(name) {
-  if (!name) return '?'
-  return name.split(/[\s.]+/).map((w) => w[0]).join('').toUpperCase().slice(0, 2)
-}
-
 async function loadRecommendations(tier, flavor) {
   if (tier !== undefined) currentTier = tier
   if (flavor !== undefined) currentFlavor = flavor
   const container = document.getElementById('recommendations-list')
-  container.innerHTML = '<div class="loading">Loading recommendations...</div>'
+  container.innerHTML = renderSkeleton(3)
 
   try {
     const params = new URLSearchParams({ top: '10' })
@@ -42,7 +37,7 @@ async function loadRecommendations(tier, flavor) {
     const items = result.data
 
     if (items.length === 0) {
-      container.innerHTML = '<div class="empty-state">No recommendations yet. Run <code>coffee scrape</code> first.</div>'
+      container.innerHTML = renderEmptyState('🫘', 'No recommendations yet', 'Run coffee scrape to start tracking prices and get personalized recommendations.')
       return
     }
 
@@ -79,18 +74,7 @@ async function loadRecommendations(tier, flavor) {
         priceHtml = `<span class="effective-price">${effectivePerKg} \u20ac/kg</span> <span class="original-price-small">${perKg} \u20ac/kg</span>`
       }
 
-      const variantChips = (r.variants || [])
-        .filter((v) => v.inStock && v.weightGrams)
-        .map((v) => {
-          const vPerKg = v.pricePer100g ? (v.pricePer100g * 10).toFixed(2) : null
-          const label = v.weightGrams >= 1000 ? `${v.weightGrams / 1000}kg` : `${v.weightGrams}g`
-          if (ud && v.price) {
-            const effectivePrice = (v.price * (1 - ud.percent / 100)).toFixed(2)
-            return `<span class="variant-chip" title="${vPerKg ? vPerKg + ' \u20ac/kg' : ''}">${label} <span class="effective-price">${effectivePrice} \u20ac</span></span>`
-          }
-          return `<span class="variant-chip" title="${vPerKg ? vPerKg + ' \u20ac/kg' : ''}">${label} ${v.price ? v.price.toFixed(2) + ' \u20ac' : ''}</span>`
-        })
-        .join('')
+      const variantChips = renderVariantChips(r.variants, ud)
 
       // Check if product is out of stock (no in-stock variants)
       const hasInStockVariants = (r.variants || []).some((v) => v.inStock)
@@ -104,7 +88,7 @@ async function loadRecommendations(tier, flavor) {
         <div class="rec-card ${!hasInStockVariants ? 'out-of-stock' : ''}" data-product-id="${r.productId}">
           <div class="rec-image-container rec-clickable" data-section="product-detail" data-id="${r.productId}">
             <img src="${esc(imgSrc)}" alt="${esc(r.name)}" class="rec-image" onerror="this.src='/images/placeholder-coffee.svg'">
-            <div class="shop-badge">${esc(recShopInitials(r.shopName))}</div>
+            <div class="shop-badge">${esc(shopInitials(r.shopName))}</div>
             <div class="rec-rank">#${i + 1}</div>
             ${outOfStockBadge}
             ${saleBadge}
@@ -166,10 +150,3 @@ document.addEventListener('click', (e) => {
     }
   }
 })
-
-function esc(str) {
-  if (!str) return ''
-  const d = document.createElement('div')
-  d.textContent = str
-  return d.innerHTML
-}

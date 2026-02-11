@@ -95,6 +95,45 @@ export function createAlertEngine(alertRepo, config) {
       }
     },
 
+    detectStockChange(variantResult, variant, product, shopSlug) {
+      if (!variantResult.stockChanged) return null
+
+      const wentOutOfStock = variantResult.previousStock === 1 && variant.inStock === 0
+      const backInStock = variantResult.previousStock === 0 && variant.inStock === 1
+
+      if (!wentOutOfStock && !backInStock) return null
+
+      return {
+        alertType: ALERT_TYPES.STOCK_CHANGE,
+        severity: backInStock ? SEVERITY.INFO : SEVERITY.LOW,
+        shopSlug,
+        productId: product.id,
+        title: backInStock ? `Back in stock: ${product.name}` : `Out of stock: ${product.name}`,
+        message: backInStock
+          ? `${product.name} is available again at ${shopSlug}`
+          : `${product.name} is now out of stock at ${shopSlug}`,
+        data: {
+          previousStock: variantResult.previousStock,
+          newStock: variant.inStock,
+          weightGrams: variant.weightGrams
+        }
+      }
+    },
+
+    detectProductRemoved(product, shopSlug) {
+      return {
+        alertType: ALERT_TYPES.PRODUCT_REMOVED,
+        severity: SEVERITY.LOW,
+        shopSlug,
+        productId: product.id,
+        title: `Product removed: ${product.name}`,
+        message: `${product.name} is no longer available at ${shopSlug}`,
+        data: {
+          url: product.url
+        }
+      }
+    },
+
     saveAlert(alert) {
       try {
         alertRepo.create(alert)

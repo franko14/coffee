@@ -1,6 +1,17 @@
 import { now } from '../../utils/date-utils.js'
 
-export function createProductRepository(db) {
+const TRACKED_FIELDS = [
+  ['origin_country', 'originCountry'],
+  ['origin_region', 'originRegion'],
+  ['process', 'process'],
+  ['roast_level', 'roastLevel'],
+  ['variety', 'variety'],
+  ['tasting_notes', 'tastingNotes'],
+  ['altitude', 'altitude'],
+  ['brewing_method', 'brewingMethod']
+]
+
+export function createProductRepository(db, { productChangeRepo } = {}) {
   const stmts = {
     findAll: db.prepare(`
       SELECT p.*, s.name as shop_name, s.slug as shop_slug, s.url as shop_url
@@ -14,6 +25,12 @@ export function createProductRepository(db) {
       FROM products p
       JOIN shops s ON p.shop_id = s.id
       WHERE p.id = ?
+    `),
+    findByIds: db.prepare(`
+      SELECT p.*, s.name as shop_name, s.slug as shop_slug, s.url as shop_url
+      FROM products p
+      JOIN shops s ON p.shop_id = s.id
+      WHERE p.id IN (SELECT value FROM json_each(?))
     `),
     findByShop: db.prepare(`
       SELECT p.*, s.name as shop_name, s.slug as shop_slug, s.url as shop_url
@@ -40,11 +57,11 @@ export function createProductRepository(db) {
         roast_level = @roastLevel, variety = @variety, tasting_notes = @tastingNotes,
         altitude = @altitude, brewing_method = @brewingMethod, arabica_percentage = @arabicaPercentage,
         is_blend = @isBlend, is_decaf = @isDecaf,
-        last_seen_at = @lastSeenAt, is_active = 1, updated_at = datetime('now')
+        last_seen_at = @lastSeenAt, is_active = 1, deactivated_at = NULL, updated_at = datetime('now')
       WHERE id = @id
     `),
     markInactive: db.prepare(`
-      UPDATE products SET is_active = 0, updated_at = datetime('now')
+      UPDATE products SET is_active = 0, deactivated_at = datetime('now'), updated_at = datetime('now')
       WHERE shop_id = ? AND last_seen_at < ? AND is_active = 1
     `),
     countByShop: db.prepare(`
@@ -65,6 +82,11 @@ export function createProductRepository(db) {
       return stmts.findById.get(id) || null
     },
 
+    findByIds(ids) {
+      if (ids.length === 0) return []
+      return stmts.findByIds.all(JSON.stringify(ids))
+    },
+
     findByShop(shopSlug) {
       return stmts.findByShop.all(shopSlug)
     },
@@ -79,6 +101,21 @@ export function createProductRepository(db) {
       const timestamp = now()
 
       if (existing) {
+        if (productChangeRepo) {
+          for (const [dbCol, dataKey] of TRACKED_FIELDS) {
+            const oldVal = existing[dbCol] || null
+            const newVal = data[dataKey] || null
+            if (oldVal !== newVal) {
+              productChangeRepo.record({
+                productId: existing.id,
+                fieldName: dbCol,
+                oldValue: oldVal,
+                newValue: newVal
+              })
+            }
+          }
+        }
+
         stmts.update.run({
           ...data,
           id: existing.id,

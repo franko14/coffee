@@ -1,7 +1,10 @@
-export function createVariantRepository(db) {
+export function createVariantRepository(db, { stockChangeRepo } = {}) {
   const stmts = {
     findByProduct: db.prepare(`
       SELECT * FROM product_variants WHERE product_id = ? ORDER BY weight_grams, grind
+    `),
+    findByProducts: db.prepare(`
+      SELECT * FROM product_variants WHERE product_id IN (SELECT value FROM json_each(?)) ORDER BY product_id, weight_grams, grind
     `),
     findById: db.prepare('SELECT * FROM product_variants WHERE id = ?'),
     findByProductAndLabel: db.prepare(`
@@ -47,6 +50,11 @@ export function createVariantRepository(db) {
       return stmts.findByProduct.all(productId)
     },
 
+    findByProducts(productIds) {
+      if (productIds.length === 0) return []
+      return stmts.findByProducts.all(JSON.stringify(productIds))
+    },
+
     findById(id) {
       return stmts.findById.get(id) || null
     },
@@ -61,12 +69,22 @@ export function createVariantRepository(db) {
       )
 
       if (existing) {
+        if (stockChangeRepo && existing.in_stock !== data.inStock) {
+          stockChangeRepo.record({
+            variantId: existing.id,
+            previousStock: existing.in_stock,
+            newStock: data.inStock
+          })
+        }
+
         stmts.update.run({ ...data, id: existing.id })
         return {
           id: existing.id,
           isNew: false,
           previousPrice: existing.current_price,
-          priceChanged: existing.current_price !== data.currentPrice
+          previousStock: existing.in_stock,
+          priceChanged: existing.current_price !== data.currentPrice,
+          stockChanged: existing.in_stock !== data.inStock
         }
       }
 

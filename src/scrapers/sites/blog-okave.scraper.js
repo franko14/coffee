@@ -1,5 +1,6 @@
 import * as cheerio from 'cheerio'
 import { BaseScraper } from '../base-scraper.js'
+import { mapRoasteryToSlug } from '../roastery-map.js'
 
 export class BlogOKaveScraper extends BaseScraper {
   async scrape() {
@@ -237,7 +238,7 @@ export class BlogOKaveScraper extends BaseScraper {
 
             codes.push({
               code,
-              shopSlug: shopMatch ? this.mapRoasteryToSlug(shopMatch[1]) : null,
+              shopSlug: shopMatch ? mapRoasteryToSlug(shopMatch[1]) : null,
               discountPercent: percentMatch ? parseInt(percentMatch[1], 10) : null,
               discountFixed: null,
               description: parent.slice(0, 200),
@@ -251,17 +252,6 @@ export class BlogOKaveScraper extends BaseScraper {
     })
 
     return codes
-  }
-
-  mapRoasteryToSlug(name) {
-    const map = {
-      'triple five': 'triple-five',
-      'black': 'black-sk',
-      'goriffee': 'goriffee',
-      'zlaté zrnko': 'zlate-zrnko',
-      'zlate zrnko': 'zlate-zrnko'
-    }
-    return map[name.toLowerCase()] || null
   }
 
   isReviewUrl(href) {

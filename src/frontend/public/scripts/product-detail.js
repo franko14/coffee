@@ -1,4 +1,4 @@
-/* global api, esc, drawPriceChart */
+/* global api, esc, drawPriceChart, renderEmptyState */
 
 async function showProductDetail(productId) {
   const container = document.getElementById('detail-content')
@@ -81,6 +81,9 @@ async function showProductDetail(productId) {
         <div class="attr-value">${p.rating.average_rating} / ${p.rating.out_of} (${p.rating.review_count} reviews)</div>
       </div>
     ` : ''
+
+    const breadcrumbName = document.getElementById('breadcrumb-product-name')
+    if (breadcrumbName) breadcrumbName.textContent = p.name
 
     container.innerHTML = `
       ${couponBannerHtml}

@@ -1,6 +1,8 @@
 import * as cheerio from 'cheerio'
 import { WooCommerceScraper } from '../woocommerce-scraper.js'
 import { parseWeight } from '../parsers/price.parser.js'
+import { parseAttributeTable } from '../parsers/attribute-table.parser.js'
+import { DEFAULT_WEIGHT_GRAMS } from '../constants.js'
 
 export class ZlateZrnkoScraper extends WooCommerceScraper {
   async parseListingPage(html, _url) {
@@ -27,28 +29,15 @@ export class ZlateZrnkoScraper extends WooCommerceScraper {
   }
 
   extractDetailAttributes($) {
-    const attrs = super.extractDetailAttributes($)
+    const baseAttrs = super.extractDetailAttributes($)
 
     // Woodmart theme may use special attribute display
-    $('.woodmart-tab-wrapper .woocommerce-product-attributes tr, .shop_attributes tr').each((_, el) => {
-      const label = $(el).find('th').text().toLowerCase().trim()
-      const value = $(el).find('td p, td').text().trim()
+    const woodmartAttrs = parseAttributeTable(
+      $,
+      '.woodmart-tab-wrapper .woocommerce-product-attributes tr, .shop_attributes tr'
+    )
 
-      if (!value) return
-
-      if (/origin|p[ôo]vod|country|krajina/.test(label)) {
-        const parts = value.split(/[,/]/)
-        attrs.country = parts[0]?.trim()
-        attrs.region = parts[1]?.trim()
-      }
-      if (/process|spracovanie/.test(label)) attrs.process = value
-      if (/roast|pra[žz]enie/.test(label)) attrs.roastLevel = value
-      if (/varieta|variety|odroda/.test(label)) attrs.variety = value
-      if (/tasting|chu[tť]|profil/.test(label)) attrs.tastingNotes = value
-      if (/altitude|nadmorsk/.test(label)) attrs.altitude = value
-    })
-
-    return attrs
+    return { ...woodmartAttrs, ...baseAttrs }
   }
 
   extractWeightFromPage($) {
@@ -68,18 +57,16 @@ export class ZlateZrnkoScraper extends WooCommerceScraper {
       }
     })
 
-    return attrWeight || 250
+    return attrWeight || DEFAULT_WEIGHT_GRAMS
   }
 
-  isProductUrl(href) {
-    if (!href) return false
-    if (href.includes('/cart') || href.includes('/checkout')) return false
-    if (href.includes('/my-account') || href.includes('/moj-ucet')) return false
-    if (href.includes('/kategoria/') || href.includes('/product-category/')) return false
-    if (href.includes('add-to-cart')) return false
-    if (href.endsWith('.jpg') || href.endsWith('.png')) return false
-    // Must contain /obchod/ to be a product
-    if (!href.includes('/obchod/')) return false
-    return this.matchesDomain(href)
+  isExcludedUrl(href) {
+    if (super.isExcludedUrl(href)) return true
+    if (href.includes('/moj-ucet')) return true
+    return false
+  }
+
+  isProductPath(href) {
+    return href.includes('/obchod/')
   }
 }

@@ -26,6 +26,27 @@ export function pricePerKg(pricePer100g) {
   return pricePer100g * 10
 }
 
+export function pricePerKgRounded(pricePer100g) {
+  if (pricePer100g == null) {
+    return null
+  }
+  return Math.round(pricePer100g * 10 * 100) / 100
+}
+
+export function selectCheapestVariant(variants, { preferInStock = true } = {}) {
+  const withPrice = variants.filter((v) => v.price_per_100g)
+  if (withPrice.length === 0) return null
+
+  if (preferInStock) {
+    const inStock = withPrice.filter((v) => v.in_stock)
+    if (inStock.length > 0) {
+      return [...inStock].sort((a, b) => a.price_per_100g - b.price_per_100g)[0]
+    }
+  }
+
+  return [...withPrice].sort((a, b) => a.price_per_100g - b.price_per_100g)[0]
+}
+
 export function getPriceTierLabel(pricePer100g, priceTiers) {
   const perKg = pricePerKg(pricePer100g)
   if (perKg == null) {

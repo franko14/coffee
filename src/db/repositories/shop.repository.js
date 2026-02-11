@@ -23,6 +23,10 @@ export function createShopRepository(db) {
         user_discount_enabled = @enabled,
         updated_at = datetime('now')
       WHERE slug = @slug
+    `),
+    updateLastScrapedAt: db.prepare(`
+      UPDATE shops SET last_scraped_at = datetime('now'), updated_at = datetime('now')
+      WHERE slug = ?
     `)
   }
 
@@ -78,6 +82,10 @@ export function createShopRepository(db) {
         discountCode: discountCode || null,
         enabled: enabled ? 1 : 0
       })
+    },
+
+    updateLastScrapedAt(slug) {
+      stmts.updateLastScrapedAt.run(slug)
     }
   }
 }

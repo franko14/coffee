@@ -52,10 +52,3 @@ export function parseWeight(text) {
 
   return null
 }
-
-export function extractPriceAndWeight(text) {
-  return {
-    price: parsePrice(text),
-    weight: parseWeight(text)
-  }
-}

@@ -1,8 +1,6 @@
 import chalk from 'chalk'
 import { loadConfig } from '../../../config/loader.js'
-import { getDb } from '../../db/connection.js'
-import { runMigrations } from '../../db/migrator.js'
-import { createAlertRepository } from '../../db/repositories/alert.repository.js'
+import { bootstrapDb } from '../../db/bootstrap.js'
 import { formatAlertsForConsole } from '../../alerts/formatters/console.formatter.js'
 
 export function registerAlertsCommand(program) {
@@ -16,10 +14,8 @@ export function registerAlertsCommand(program) {
     .action(async (options) => {
       try {
         const config = loadConfig()
-        const db = getDb(config.database.path)
-        runMigrations(db)
-
-        const alertRepo = createAlertRepository(db)
+        const { repos } = bootstrapDb(config)
+        const { alertRepo } = repos
 
         if (options.markRead) {
           alertRepo.markAllRead()

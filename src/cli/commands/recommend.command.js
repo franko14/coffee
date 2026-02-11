@@ -1,14 +1,9 @@
 import chalk from 'chalk'
 import { loadConfig } from '../../../config/loader.js'
-import { getDb } from '../../db/connection.js'
-import { runMigrations } from '../../db/migrator.js'
-import { createProductRepository } from '../../db/repositories/product.repository.js'
-import { createVariantRepository } from '../../db/repositories/variant.repository.js'
-import { createRatingRepository } from '../../db/repositories/rating.repository.js'
-import { createBadgeRepository } from '../../db/repositories/badge.repository.js'
-import { createBlogReviewRepository } from '../../db/repositories/blog-review.repository.js'
+import { bootstrapDb } from '../../db/bootstrap.js'
 import { createTierCalculator } from '../../scoring/tier-calculator.js'
 import { formatPrice, formatPricePer100g } from '../../utils/price-utils.js'
+import { groupByKey } from '../../utils/group-by.js'
 
 export function registerRecommendCommand(program) {
   program
@@ -19,27 +14,33 @@ export function registerRecommendCommand(program) {
     .action(async (options) => {
       try {
         const config = loadConfig()
-        const db = getDb(config.database.path)
-        runMigrations(db)
-
-        const productRepo = createProductRepository(db)
-        const variantRepo = createVariantRepository(db)
-        const ratingRepo = createRatingRepository(db)
-        const badgeRepo = createBadgeRepository(db)
-        const blogReviewRepo = createBlogReviewRepository(db)
+        const { repos } = bootstrapDb(config)
+        const { productRepo, variantRepo, ratingRepo, badgeRepo, blogReviewRepo } = repos
 
         const calculator = createTierCalculator(config)
         const products = productRepo.findAll()
+        const productIds = products.map((p) => p.id)
+
+        // Batch-fetch all related data (eliminates N+1 queries)
+        const allVariants = variantRepo.findByProducts(productIds)
+        const allRatings = ratingRepo.findLatestByProducts(productIds)
+        const allBadges = badgeRepo.findByProducts(productIds)
+        const allBlogMatches = blogReviewRepo.findMatchesByProducts(productIds)
+
+        const variantsMap = groupByKey(allVariants, (v) => v.product_id)
+        const ratingsMap = new Map(allRatings.map((r) => [r.product_id, r]))
+        const badgesMap = groupByKey(allBadges, (b) => b.product_id)
+        const blogMatchesMap = groupByKey(allBlogMatches, (m) => m.product_id)
 
         // Build context map for scoring
         const allPrices = []
         const contextMap = new Map()
 
         for (const product of products) {
-          const variants = variantRepo.findByProduct(product.id)
-          const rating = ratingRepo.findLatestByProduct(product.id)
-          const badges = badgeRepo.findByProduct(product.id)
-          const blogMatches = blogReviewRepo.findMatchesByProduct(product.id)
+          const variants = variantsMap.get(product.id) || []
+          const rating = ratingsMap.get(product.id) || null
+          const badges = badgesMap.get(product.id) || []
+          const blogMatches = blogMatchesMap.get(product.id) || []
           const blogReview = blogMatches.length > 0 ? blogMatches[0] : null
 
           for (const v of variants) {
@@ -51,11 +52,10 @@ export function registerRecommendCommand(program) {
             rating,
             badges,
             blogReview,
-            allPricesInTier: [] // populated after collecting all prices
+            allPricesInTier: []
           })
         }
 
-        // Set allPricesInTier for each product
         for (const [, ctx] of contextMap) {
           ctx.allPricesInTier = allPrices
         }

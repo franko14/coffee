@@ -24,6 +24,13 @@ export function createBlogReviewRepository(db) {
       WHERE bpm.product_id = ?
       ORDER BY bpm.confidence DESC
     `),
+    findMatchesByProducts: db.prepare(`
+      SELECT br.*, bpm.confidence, bpm.match_type, bpm.product_id
+      FROM blog_reviews br
+      JOIN blog_product_matches bpm ON bpm.blog_review_id = br.id
+      WHERE bpm.product_id IN (SELECT value FROM json_each(?))
+      ORDER BY bpm.confidence DESC
+    `),
     insertMatch: db.prepare(`
       INSERT INTO blog_product_matches (blog_review_id, product_id, match_type, confidence)
       VALUES (@blogReviewId, @productId, @matchType, @confidence)
@@ -49,6 +56,11 @@ export function createBlogReviewRepository(db) {
 
     findMatchesByProduct(productId) {
       return stmts.findMatchesByProduct.all(productId)
+    },
+
+    findMatchesByProducts(productIds) {
+      if (productIds.length === 0) return []
+      return stmts.findMatchesByProducts.all(JSON.stringify(productIds))
     },
 
     insertMatch(match) {

@@ -19,6 +19,7 @@ export function createAlertRepository(db) {
       LEFT JOIN shops s ON p.shop_id = s.id
       WHERE a.is_read = 0
       ORDER BY a.created_at DESC
+      LIMIT 200
     `),
     findByType: db.prepare(`
       SELECT a.*, p.name as product_name, p.image_url as product_image, s.name as shop_name, s.slug as shop_slug_join

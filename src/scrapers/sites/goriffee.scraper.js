@@ -49,16 +49,7 @@ export class GoriffeeScraper extends WooCommerceScraper {
     return null
   }
 
-  isProductUrl(href) {
-    if (!href) return false
-    if (href.includes('/cart') || href.includes('/checkout')) return false
-    if (href.includes('/my-account')) return false
-    if (href.includes('/product-category/') || href.includes('/kategoria/')) return false
-    if (href.includes('/kategorie-produktov/')) return false
-    if (href.includes('add-to-cart')) return false
-    if (href.endsWith('.jpg') || href.endsWith('.png')) return false
-    // Must contain /shop/kava/ to be a product
-    if (!href.includes('/shop/kava/') && !href.includes('/shop/vyhodne-baliky/')) return false
-    return this.matchesDomain(href)
+  isProductPath(href) {
+    return href.includes('/shop/kava/') || href.includes('/shop/vyhodne-baliky/')
   }
 }

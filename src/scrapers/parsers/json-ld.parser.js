@@ -1,7 +1,7 @@
 import * as cheerio from 'cheerio'
 
-export function extractJsonLd(html) {
-  const $ = cheerio.load(html)
+export function extractJsonLd(htmlOrCheerio) {
+  const $ = typeof htmlOrCheerio === 'string' ? cheerio.load(htmlOrCheerio) : htmlOrCheerio
   const results = []
 
   $('script[type="application/ld+json"]').each((_, el) => {
@@ -20,8 +20,8 @@ export function extractJsonLd(html) {
   return results
 }
 
-export function extractProductJsonLd(html) {
-  const allLd = extractJsonLd(html)
+export function extractProductJsonLd(htmlOrCheerio) {
+  const allLd = extractJsonLd(htmlOrCheerio)
 
   for (const item of allLd) {
     if (item['@type'] === 'Product') {

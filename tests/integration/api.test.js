@@ -49,7 +49,7 @@ beforeAll(() => {
 
   const app = express()
   app.use(express.json())
-  app.use('/api/products', createProductRoutes(productRepo, variantRepo, ratingRepo, badgeRepo, blogReviewRepo))
+  app.use('/api/products', createProductRoutes(productRepo, variantRepo, ratingRepo, badgeRepo, blogReviewRepo, priceHistoryRepo, shopRepo))
   app.use('/api/shops', createShopRoutes(shopRepo, productRepo))
   app.use('/api/alerts', createAlertRoutes(alertRepo))
 

@@ -4,23 +4,30 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Coffee Monitor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles/shared.css">
   <link rel="stylesheet" href="/styles/main.css">
   <link rel="stylesheet" href="/styles/products.css">
   <link rel="stylesheet" href="/styles/recommendations.css">
 </head>
 <body>
   <header>
-    <div class="container">
-      <h1>Coffee Monitor</h1>
-      <nav>
-        <a href="#recommendations" class="nav-link active" data-section="recommendations">Recommendations</a>
-        <a href="#special-offers" class="nav-link" data-section="special-offers">Special Offers</a>
-        <a href="#sale" class="nav-link" data-section="sale">Sale</a>
-        <a href="#compare" class="nav-link" data-section="compare">Compare</a>
-        <a href="#products" class="nav-link" data-section="products">Products</a>
-        <a href="#analytics" class="nav-link" data-section="analytics">Analytics</a>
-        <a href="#alerts" class="nav-link" data-section="alerts">Alerts <span id="alert-badge" class="badge hidden">0</span></a>
-        <a href="#settings" class="nav-link" data-section="settings">Settings</a>
+    <div class="container header-inner">
+      <div class="brand">
+        <span class="brand-icon">&#9749;</span>
+        <h1>Coffee Monitor</h1>
+      </div>
+      <nav aria-label="Primary navigation">
+        <a href="#recommendations" class="nav-link active" data-section="recommendations" aria-label="View recommendations">Recommendations</a>
+        <a href="#special-offers" class="nav-link" data-section="special-offers" aria-label="View special offers">Special Offers</a>
+        <a href="#sale" class="nav-link" data-section="sale" aria-label="View sale items">Sale</a>
+        <a href="#compare" class="nav-link" data-section="compare" aria-label="Compare products">Compare</a>
+        <a href="#products" class="nav-link" data-section="products" aria-label="View all products">Products</a>
+        <a href="#analytics" class="nav-link" data-section="analytics" aria-label="View analytics">Analytics</a>
+        <a href="#alerts" class="nav-link" data-section="alerts" aria-label="View alerts">Alerts <span id="alert-badge" class="badge hidden">0</span></a>
+        <a href="#settings" class="nav-link" data-section="settings" aria-label="View settings">Settings</a>
       </nav>
     </div>
   </header>
@@ -81,23 +88,23 @@
         <div class="filter-group">
           <span class="filter-label">Price tier</span>
           <div class="tier-filters">
-            <button class="tier-btn active" data-tier="">All</button>
-            <button class="tier-btn" data-tier="budget">Budget</button>
-            <button class="tier-btn" data-tier="midRange">Mid-range</button>
-            <button class="tier-btn" data-tier="premium">Premium</button>
-            <button class="tier-btn" data-tier="ultraPremium">Ultra-premium</button>
+            <button class="pill-btn tier-btn active" data-tier="">All</button>
+            <button class="pill-btn tier-btn" data-tier="budget">Budget</button>
+            <button class="pill-btn tier-btn" data-tier="midRange">Mid-range</button>
+            <button class="pill-btn tier-btn" data-tier="premium">Premium</button>
+            <button class="pill-btn tier-btn" data-tier="ultraPremium">Ultra-premium</button>
           </div>
         </div>
         <div class="filter-group">
           <span class="filter-label">Flavor</span>
           <div class="flavor-filters" id="flavor-filters">
-            <button class="flavor-btn active" data-flavor="">All</button>
-            <button class="flavor-btn" data-flavor="chocolate">Chocolate / Dark</button>
-            <button class="flavor-btn" data-flavor="fruity">Fruity</button>
-            <button class="flavor-btn" data-flavor="nutty">Nutty</button>
-            <button class="flavor-btn" data-flavor="sweet">Sweet / Honey</button>
-            <button class="flavor-btn" data-flavor="floral">Floral</button>
-            <button class="flavor-btn" data-flavor="spicy">Spicy</button>
+            <button class="pill-btn flavor-btn active" data-flavor="">All</button>
+            <button class="pill-btn flavor-btn" data-flavor="chocolate">Chocolate / Dark</button>
+            <button class="pill-btn flavor-btn" data-flavor="fruity">Fruity</button>
+            <button class="pill-btn flavor-btn" data-flavor="nutty">Nutty</button>
+            <button class="pill-btn flavor-btn" data-flavor="sweet">Sweet / Honey</button>
+            <button class="pill-btn flavor-btn" data-flavor="floral">Floral</button>
+            <button class="pill-btn flavor-btn" data-flavor="spicy">Spicy</button>
           </div>
         </div>
       </div>
@@ -126,7 +133,10 @@
           <option value="name">Sort by Name</option>
           <option value="price">Sort by Price</option>
         </select>
-        <input type="text" id="search-input" placeholder="Search coffees...">
+        <div class="search-wrap">
+          <input type="text" id="search-input" placeholder="Search coffees...">
+          <div id="search-spinner" class="search-spinner"></div>
+        </div>
       </div>
       <div id="products-list" class="card-grid"></div>
     </section>
@@ -185,7 +195,13 @@
     </section>
 
     <section id="product-detail" class="section">
-      <a href="#products" class="back-link" data-section="products">&larr; Back to products</a>
+      <nav class="breadcrumb" id="detail-breadcrumb">
+        <a href="#recommendations" data-section="recommendations">Home</a>
+        <span class="breadcrumb-sep">/</span>
+        <a href="#products" data-section="products">Products</a>
+        <span class="breadcrumb-sep">/</span>
+        <span class="breadcrumb-current" id="breadcrumb-product-name">...</span>
+      </nav>
       <div id="detail-content"></div>
       <div id="price-chart-container">
         <h3>Price History</h3>
@@ -194,6 +210,7 @@
     </section>
   </main>
 
+  <script src="/scripts/utils.js"></script>
   <script src="/scripts/app.js"></script>
   <script src="/scripts/products.js"></script>
   <script src="/scripts/product-detail.js"></script>
@@ -205,5 +222,8 @@
   <script src="/scripts/analytics.js"></script>
   <script src="/scripts/filters.js"></script>
   <script src="/scripts/settings.js"></script>
+
+  <button class="scroll-top-btn" id="scroll-top-btn" aria-label="Scroll to top">&uarr;</button>
+  <div class="toast-container" id="toast-container"></div>
 </body>
 </html>

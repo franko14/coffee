@@ -1,18 +1,35 @@
 import { Router } from 'express'
+import { z } from 'zod'
+import { positiveIntParam } from '../validation/schemas.js'
 
 export function createAlertRoutes(alertRepo) {
   const router = Router()
 
+  const alertsQuerySchema = z.object({
+    type: z.string().optional(),
+    unread: z.enum(['true', 'false']).optional(),
+    limit: z.string().transform((val) => parseInt(val, 10)).pipe(z.number().min(1).max(500)).optional()
+  })
+
   router.get('/', (req, res) => {
-    const { type, unread, limit = '50' } = req.query
+    const validation = alertsQuerySchema.safeParse(req.query)
+    if (!validation.success) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid query parameters',
+        details: validation.error.errors
+      })
+    }
+
+    const { type, unread, limit = 50 } = validation.data
 
     let alerts
     if (unread === 'true') {
       alerts = alertRepo.findUnread()
     } else if (type) {
-      alerts = alertRepo.findByType(type, parseInt(limit, 10))
+      alerts = alertRepo.findByType(type, limit)
     } else {
-      alerts = alertRepo.findAll(parseInt(limit, 10))
+      alerts = alertRepo.findAll(limit)
     }
 
     const unreadCount = alertRepo.countUnread()
@@ -25,7 +42,16 @@ export function createAlertRoutes(alertRepo) {
   })
 
   router.post('/:id/read', (req, res) => {
-    alertRepo.markRead(parseInt(req.params.id, 10))
+    const validation = positiveIntParam.safeParse(req.params.id)
+    if (!validation.success) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid alert ID',
+        details: validation.error.errors
+      })
+    }
+
+    alertRepo.markRead(validation.data)
     res.json({ success: true })
   })
 

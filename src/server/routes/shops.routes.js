@@ -1,7 +1,15 @@
 import { Router } from 'express'
+import { z } from 'zod'
+import { invalidateShopDiscountCache } from '../../utils/shop-discounts.js'
 
 export function createShopRoutes(shopRepo, productRepo) {
   const router = Router()
+
+  const discountSchema = z.object({
+    discountPercent: z.number().min(0).max(100).nullable().optional(),
+    discountCode: z.string().max(50).nullable().optional(),
+    enabled: z.boolean()
+  })
 
   router.get('/', (_req, res) => {
     const shops = shopRepo.findAll().filter((s) => !s.is_blog)
@@ -18,7 +26,17 @@ export function createShopRoutes(shopRepo, productRepo) {
 
   router.put('/:slug/discount', (req, res) => {
     const { slug } = req.params
-    const { discountPercent, discountCode, enabled } = req.body
+
+    const validation = discountSchema.safeParse(req.body)
+    if (!validation.success) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid input',
+        details: validation.error.errors
+      })
+    }
+
+    const { discountPercent, discountCode, enabled } = validation.data
 
     const shop = shopRepo.findBySlug(slug)
     if (!shop) {
@@ -31,6 +49,7 @@ export function createShopRoutes(shopRepo, productRepo) {
       enabled: Boolean(enabled)
     })
 
+    invalidateShopDiscountCache()
     res.json({ success: true })
   })
 

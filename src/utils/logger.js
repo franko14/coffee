@@ -1,6 +1,8 @@
 import pino from 'pino'
 import { loadConfig } from '../../config/loader.js'
 
+const isProduction = process.env.NODE_ENV === 'production'
+
 let logger = null
 
 export function getLogger() {
@@ -8,30 +10,25 @@ export function getLogger() {
     return logger
   }
 
+  const prettyTransport = {
+    target: 'pino-pretty',
+    options: {
+      colorize: true,
+      translateTime: 'SYS:standard',
+      ignore: 'pid,hostname'
+    }
+  }
+
   try {
     const config = loadConfig()
     logger = pino({
       level: config.logging.level,
-      transport: {
-        target: 'pino-pretty',
-        options: {
-          colorize: true,
-          translateTime: 'SYS:standard',
-          ignore: 'pid,hostname'
-        }
-      }
+      ...(isProduction ? {} : { transport: prettyTransport })
     })
   } catch {
     logger = pino({
       level: 'info',
-      transport: {
-        target: 'pino-pretty',
-        options: {
-          colorize: true,
-          translateTime: 'SYS:standard',
-          ignore: 'pid,hostname'
-        }
-      }
+      ...(isProduction ? {} : { transport: prettyTransport })
     })
   }
 

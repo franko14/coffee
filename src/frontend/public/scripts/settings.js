@@ -1,8 +1,8 @@
-/* global api, esc */
+/* global api, esc, showToast, renderEmptyState, renderSkeleton */
 
 async function loadSettings() {
   const container = document.getElementById('shop-discounts-list')
-  container.innerHTML = '<div class="loading">Loading shops...</div>'
+  container.innerHTML = renderSkeleton(3)
 
   try {
     const result = await api.get('/api/shops')
@@ -41,7 +41,7 @@ async function loadSettings() {
               >
               <span class="toggle-label">${isEnabled ? 'Enabled' : 'Disabled'}</span>
             </label>
-            <button class="discount-save-btn" onclick="saveShopDiscount('${esc(shop.slug)}')">Save</button>
+            <button class="discount-save-btn" data-action="save-discount" data-slug="${esc(shop.slug)}">Save</button>
           </div>
         </div>
       `
@@ -53,6 +53,11 @@ async function loadSettings() {
         const label = e.target.nextElementSibling
         label.textContent = e.target.checked ? 'Enabled' : 'Disabled'
       })
+    })
+
+    // Add click handlers for save buttons
+    container.querySelectorAll('[data-action="save-discount"]').forEach((btn) => {
+      btn.addEventListener('click', () => saveShopDiscount(btn.dataset.slug))
     })
   } catch (err) {
     container.innerHTML = `<div class="empty-state">Error: ${esc(err.message)}</div>`
@@ -82,16 +87,12 @@ async function saveShopDiscount(slug) {
       enabled
     })
 
-    saveBtn.textContent = 'Saved!'
-    setTimeout(() => {
-      saveBtn.textContent = 'Save'
-      saveBtn.disabled = false
-    }, 1500)
+    saveBtn.textContent = 'Save'
+    saveBtn.disabled = false
+    showToast('Discount saved successfully', 'success')
   } catch (err) {
-    saveBtn.textContent = 'Error'
-    setTimeout(() => {
-      saveBtn.textContent = 'Save'
-      saveBtn.disabled = false
-    }, 1500)
+    saveBtn.textContent = 'Save'
+    saveBtn.disabled = false
+    showToast('Failed to save discount', 'error')
   }
 }

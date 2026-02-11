@@ -1,0 +1,2 @@
+export const DEFAULT_WEIGHT_GRAMS = 250
+export const MAX_DESCRIPTION_LENGTH = 500

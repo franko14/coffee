@@ -9,6 +9,9 @@ export function createBadgeRepository(db) {
     findByProduct: db.prepare(`
       SELECT * FROM product_badges WHERE product_id = ?
     `),
+    findByProducts: db.prepare(`
+      SELECT * FROM product_badges WHERE product_id IN (SELECT value FROM json_each(?))
+    `),
     deleteByProduct: db.prepare(`
       DELETE FROM product_badges WHERE product_id = ?
     `)
@@ -21,6 +24,11 @@ export function createBadgeRepository(db) {
 
     findByProduct(productId) {
       return stmts.findByProduct.all(productId)
+    },
+
+    findByProducts(productIds) {
+      if (productIds.length === 0) return []
+      return stmts.findByProducts.all(JSON.stringify(productIds))
     },
 
     replaceForProduct(productId, badges) {

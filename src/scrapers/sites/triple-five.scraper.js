@@ -1,6 +1,5 @@
 import * as cheerio from 'cheerio'
 import { WooCommerceScraper } from '../woocommerce-scraper.js'
-import { extractProductJsonLd, parseProductFromJsonLd } from '../parsers/json-ld.parser.js'
 
 const STRUCTURED_FIELDS = [
   { pattern: /^krajina/i, key: 'country' },
@@ -36,13 +35,10 @@ export class TripleFiveScraper extends WooCommerceScraper {
     return [...new Set(urls)]
   }
 
-  extractDetailAttributes($) {
+  extractDetailAttributes($, ldData) {
     const attrs = super.extractDetailAttributes($)
-    const html = $.html()
 
-    // Parse structured data from JSON-LD description
-    const jsonLd = extractProductJsonLd(html)
-    const ldData = parseProductFromJsonLd(jsonLd)
+    // Parse structured data from JSON-LD description (ldData passed from parent)
     const structured = this.parseStructuredDescription(ldData?.description)
 
     if (structured.country && !attrs.country) attrs.country = structured.country
@@ -118,15 +114,8 @@ export class TripleFiveScraper extends WooCommerceScraper {
     }
   }
 
-  isProductUrl(href) {
-    if (!href) return false
-    if (href.includes('/cart') || href.includes('/checkout')) return false
-    if (href.includes('/my-account')) return false
-    if (href.includes('/product-category/') || href.includes('/kategoria/')) return false
-    if (href.includes('add-to-cart')) return false
-    if (href.endsWith('.jpg') || href.endsWith('.png')) return false
+  isProductPath(href) {
     const hrefPath = href.replace(this.shop.url, '').replace(/^https?:\/\/[^/]+/, '')
-    if (!hrefPath.includes('/product/')) return false
-    return this.matchesDomain(href)
+    return hrefPath.includes('/product/')
   }
 }

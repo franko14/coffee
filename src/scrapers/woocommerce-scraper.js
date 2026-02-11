@@ -3,6 +3,8 @@ import { BaseScraper } from './base-scraper.js'
 import { extractProductJsonLd, parseProductFromJsonLd } from './parsers/json-ld.parser.js'
 import { parsePrice, parseWeight } from './parsers/price.parser.js'
 import { parseProductAttributes } from './parsers/product-attributes.parser.js'
+import { parseAttributeTable } from './parsers/attribute-table.parser.js'
+import { DEFAULT_WEIGHT_GRAMS, MAX_DESCRIPTION_LENGTH } from './constants.js'
 
 export class WooCommerceScraper extends BaseScraper {
   async getListingPages() {
@@ -47,9 +49,9 @@ export class WooCommerceScraper extends BaseScraper {
   }
 
   async parseProductDetail(html, url) {
-    const jsonLd = extractProductJsonLd(html)
-    const ldData = parseProductFromJsonLd(jsonLd)
     const $ = cheerio.load(html)
+    const jsonLd = extractProductJsonLd($)
+    const ldData = parseProductFromJsonLd(jsonLd)
 
     const name = ldData?.name || this.extractName($)
     if (!name) return null
@@ -57,7 +59,7 @@ export class WooCommerceScraper extends BaseScraper {
     const description = this.extractDescription($)
     const fullText = `${name} ${description || ''}`
     const attrs = parseProductAttributes(fullText)
-    const detailAttrs = this.extractDetailAttributes($)
+    const detailAttrs = this.extractDetailAttributes($, ldData)
 
     const variants = this.extractVariants($, ldData)
 
@@ -104,38 +106,7 @@ export class WooCommerceScraper extends BaseScraper {
   }
 
   extractDetailAttributes($) {
-    const attrs = {}
-    const attrRows = $('.woocommerce-product-attributes tr, .product_meta span, .product-attributes li')
-
-    attrRows.each((_, el) => {
-      const label = $(el).find('th, .label').text().toLowerCase().trim()
-      const value = $(el).find('td, .value').text().trim()
-
-      if (!label || !value) return
-
-      if (/origin|p[ôo]vod|country|krajina/.test(label)) {
-        const parts = value.split(/[,/]/)
-        attrs.country = parts[0]?.trim()
-        attrs.region = parts[1]?.trim() || null
-      }
-      if (/process|spracovanie|processing/.test(label)) {
-        attrs.process = value
-      }
-      if (/roast|pra[žz]enie/.test(label)) {
-        attrs.roastLevel = value
-      }
-      if (/varieta|variety|odroda/.test(label)) {
-        attrs.variety = value
-      }
-      if (/tasting|notes|chu[tť]|profil/.test(label)) {
-        attrs.tastingNotes = value
-      }
-      if (/altitude|nadmorsk|elevation/.test(label)) {
-        attrs.altitude = value
-      }
-    })
-
-    return attrs
+    return parseAttributeTable($, '.woocommerce-product-attributes tr, .product_meta span, .product-attributes li')
   }
 
   extractVariants($, ldData) {
@@ -248,7 +219,7 @@ export class WooCommerceScraper extends BaseScraper {
     if (weight) return weight
 
     const infoText = $('.product-short-description, .woocommerce-product-details__short-description').text()
-    return parseWeight(infoText) || 250
+    return parseWeight(infoText) || DEFAULT_WEIGHT_GRAMS
   }
 
   extractGrindFromLabel(label) {
@@ -282,13 +253,23 @@ export class WooCommerceScraper extends BaseScraper {
 
   isProductUrl(href) {
     if (!href) return false
-    if (href.includes('/cart') || href.includes('/checkout')) return false
-    if (href.includes('/my-account') || href.includes('/category')) return false
-    if (href.includes('/kategoria/') || href.includes('/product-category/')) return false
-    if (href.includes('/kategorie-produktov/')) return false
-    if (href.endsWith('.jpg') || href.endsWith('.png')) return false
-    if (href.includes('add-to-cart')) return false
-    return this.matchesDomain(href)
+    if (this.isExcludedUrl(href)) return false
+    if (!this.matchesDomain(href)) return false
+    return this.isProductPath(href)
+  }
+
+  isExcludedUrl(href) {
+    if (href.includes('/cart') || href.includes('/checkout')) return true
+    if (href.includes('/my-account')) return true
+    if (href.includes('/kategoria/') || href.includes('/product-category/')) return true
+    if (href.includes('/kategorie-produktov/')) return true
+    if (href.endsWith('.jpg') || href.endsWith('.png')) return true
+    if (href.includes('add-to-cart')) return true
+    return false
+  }
+
+  isProductPath(_href) {
+    return true
   }
 
   isPageOutOfStock($) {
@@ -340,6 +321,6 @@ export class WooCommerceScraper extends BaseScraper {
 
   truncateDescription(text) {
     if (!text) return null
-    return text.length > 500 ? text.slice(0, 497) + '...' : text
+    return text.length > MAX_DESCRIPTION_LENGTH ? text.slice(0, MAX_DESCRIPTION_LENGTH - 3) + '...' : text
   }
 }

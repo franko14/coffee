@@ -1,10 +1,9 @@
 import chalk from 'chalk'
 import { loadConfig } from '../../../config/loader.js'
-import { getDb } from '../../db/connection.js'
-import { runMigrations } from '../../db/migrator.js'
-import { createProductRepository } from '../../db/repositories/product.repository.js'
-import { createVariantRepository } from '../../db/repositories/variant.repository.js'
+import { bootstrapDb } from '../../db/bootstrap.js'
 import { formatPrice, formatPricePer100g, getPriceTierLabel } from '../../utils/price-utils.js'
+import { groupByKey } from '../../utils/group-by.js'
+import { selectCheapestVariant } from '../../utils/price-utils.js'
 
 export function registerListCommand(program) {
   program
@@ -16,22 +15,21 @@ export function registerListCommand(program) {
     .action(async (options) => {
       try {
         const config = loadConfig()
-        const db = getDb(config.database.path)
-        runMigrations(db)
+        const { repos } = bootstrapDb(config)
+        const { productRepo, variantRepo } = repos
 
-        const productRepo = createProductRepository(db)
-        const variantRepo = createVariantRepository(db)
-
-        let products = options.shop
+        const products = options.shop
           ? productRepo.findByShop(options.shop)
           : productRepo.findAll()
 
-        // Enrich with variants and cheapest price
+        // Batch-fetch all variants (eliminates N+1)
+        const productIds = products.map((p) => p.id)
+        const allVariants = variantRepo.findByProducts(productIds)
+        const variantsMap = groupByKey(allVariants, (v) => v.product_id)
+
         const enriched = products.map((p) => {
-          const variants = variantRepo.findByProduct(p.id)
-          const cheapest = variants
-            .filter((v) => v.price_per_100g && v.in_stock)
-            .sort((a, b) => a.price_per_100g - b.price_per_100g)[0]
+          const variants = variantsMap.get(p.id) || []
+          const cheapest = selectCheapestVariant(variants)
 
           return {
             ...p,

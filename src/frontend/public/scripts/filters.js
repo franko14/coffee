@@ -1,4 +1,4 @@
-/* global loadProducts */
+/* global loadProducts, renderEmptyState */
 
 document.addEventListener('DOMContentLoaded', () => {
   const shopFilter = document.getElementById('shop-filter')
@@ -23,9 +23,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let searchTimeout
   if (searchInput) {
+    const spinner = document.getElementById('search-spinner')
     searchInput.addEventListener('input', () => {
       clearTimeout(searchTimeout)
+      if (spinner) spinner.classList.add('active')
       searchTimeout = setTimeout(() => {
+        if (spinner) spinner.classList.remove('active')
         if (document.getElementById('products').classList.contains('active')) {
           loadProducts()
         }
@@ -43,7 +46,7 @@ async function loadAlerts() {
     const alerts = result.data
 
     if (alerts.length === 0) {
-      container.innerHTML = '<div class="empty-state">No alerts yet. Run <code>coffee monitor</code> to detect changes.</div>'
+      container.innerHTML = renderEmptyState('🔔', 'No alerts yet', 'Price drops, new arrivals, and stock changes will appear here after running the monitor.')
       return
     }
 
@@ -81,7 +84,7 @@ async function loadAlerts() {
     for (const [dayKey, dayAlerts] of groupedByDay) {
       html += `<div class="alert-day-group">
         <div class="alert-day-header">${formatDayHeader(dayKey)}</div>
-        <div class="alert-day-items">`
+        <div class="alert-day-items alert-timeline">`
 
       for (const a of dayAlerts) {
         const icon = typeIcons[a.alert_type] || '!'
@@ -95,7 +98,7 @@ async function loadAlerts() {
         const isClickable = a.product_id != null
 
         html += `
-          <div class="alert-item ${isClickable ? 'clickable' : ''}" ${isClickable ? `onclick="window.location.hash='product-detail/${a.product_id}'"` : ''}>
+          <div class="alert-item ${iconClass}-item ${isClickable ? 'clickable' : ''}" ${isClickable ? `data-section="product-detail" data-id="${a.product_id}"` : ''}>
             ${imageUrl
     ? `<img src="${esc(imageUrl)}" alt="" class="alert-image" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
     : ''

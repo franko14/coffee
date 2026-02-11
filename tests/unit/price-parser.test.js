@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parsePrice, parseWeight, extractPriceAndWeight } from '../../src/scrapers/parsers/price.parser.js'
+import { parsePrice, parseWeight } from '../../src/scrapers/parsers/price.parser.js'
 
 describe('parsePrice', () => {
   it('parses standard EUR prices', () => {
@@ -42,13 +42,5 @@ describe('parseWeight', () => {
     expect(parseWeight(null)).toBeNull()
     expect(parseWeight('')).toBeNull()
     expect(parseWeight('no weight')).toBeNull()
-  })
-})
-
-describe('extractPriceAndWeight', () => {
-  it('extracts both price and weight from text', () => {
-    const result = extractPriceAndWeight('250g - 15.00 €')
-    expect(result.price).toBe(15)
-    expect(result.weight).toBe(250)
   })
 })
