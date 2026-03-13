@@ -38,6 +38,22 @@ shops:
     hasRatings: true
     hasSubscriptions: false
 
+  - slug: concept-coffee
+    name: "Concept Coffee"
+    url: "https://www.conceptcoffee.sk"
+    scraperKey: concept-coffee
+    listingPath: "/filter/"
+    hasRatings: false
+    hasSubscriptions: false
+
+  - slug: jungle-roastery
+    name: "Jungle Roastery"
+    url: "https://www.jungleroastery.sk"
+    scraperKey: jungle-roastery
+    listingPath: "/kava/"
+    hasRatings: false
+    hasSubscriptions: false
+
   - slug: blog-okave
     name: "Blog o Kave"
     url: "https://blogokave.sk"

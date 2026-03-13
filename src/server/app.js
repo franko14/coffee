@@ -18,7 +18,7 @@ export function createApp(config) {
   const app = express()
 
   const { repos } = bootstrapDb(config, { seedShops: true })
-  const { shopRepo, productRepo, variantRepo, priceHistoryRepo, ratingRepo, badgeRepo, blogReviewRepo, alertRepo } = repos
+  const { shopRepo, productRepo, variantRepo, priceHistoryRepo, ratingRepo, badgeRepo, blogReviewRepo, alertRepo, scrapeRunRepo } = repos
 
   app.use(helmet({
     contentSecurityPolicy: {
@@ -57,7 +57,7 @@ export function createApp(config) {
   app.use('/api/products', createProductRoutes(productRepo, variantRepo, ratingRepo, badgeRepo, blogReviewRepo, priceHistoryRepo, shopRepo))
   app.use('/api/shops', createShopRoutes(shopRepo, productRepo))
   app.use('/api/recommendations', createRecommendationRoutes(productRepo, variantRepo, ratingRepo, badgeRepo, blogReviewRepo, config, shopRepo))
-  app.use('/api/alerts', createAlertRoutes(alertRepo))
+  app.use('/api/alerts', createAlertRoutes(alertRepo, scrapeRunRepo))
   app.use('/api/price-history', createPriceHistoryRoutes(priceHistoryRepo, productRepo, variantRepo))
 
   // 404 handler for API routes - prevents SPA fallback returning HTML for missing API endpoints

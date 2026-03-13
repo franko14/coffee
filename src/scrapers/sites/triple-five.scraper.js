@@ -18,14 +18,7 @@ export class TripleFiveScraper extends WooCommerceScraper {
     const $ = cheerio.load(html)
     const urls = []
 
-    $('a.woocommerce-LoopProduct-link, li.product a').each((_, el) => {
-      const href = $(el).attr('href')
-      if (href && this.isProductUrl(href)) {
-        urls.push(href)
-      }
-    })
-
-    $('.products .product a[href], a[href*="/product/"]').each((_, el) => {
+    $('a.woocommerce-LoopProduct-link, li.product a, .products .product a[href], a[href*="/product/"]').each((_, el) => {
       const href = $(el).attr('href')
       if (href && this.isProductUrl(href)) {
         urls.push(href)

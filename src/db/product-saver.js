@@ -47,7 +47,12 @@ export function saveScrapedProducts(products, shop, repos, callbacks = {}) {
         }
       }
 
-      variantRepo.markMissingAsOutOfStock(productId, foundVariantIds)
+      // Only mark variants as out of stock if we actually found some variants in this scrape.
+      // If foundVariantIds is empty, it likely means the page failed to load properly
+      // (bot protection, JS rendering, etc.) - preserve existing stock status.
+      if (foundVariantIds.length > 0) {
+        variantRepo.markMissingAsOutOfStock(productId, foundVariantIds)
+      }
 
       if (product.rating) {
         ratingRepo.record({

@@ -22,7 +22,7 @@ function navigateTo(section, param) {
 
   const hash = param ? `${section}/${param}` : section
   if (window.location.hash !== `#${hash}`) {
-    history.replaceState(null, '', `#${hash}`)
+    history.pushState(null, '', `#${hash}`)
   }
 
   const loaders = {
@@ -45,6 +45,18 @@ document.addEventListener('click', (e) => {
   if (link) {
     e.preventDefault()
     navigateTo(link.dataset.section, link.dataset.id)
+  }
+})
+
+document.addEventListener('auxclick', (e) => {
+  if (e.button !== 1) return
+  const link = e.target.closest('[data-section]')
+  if (link) {
+    e.preventDefault()
+    const section = link.dataset.section
+    const id = link.dataset.id
+    const hash = id ? `${section}/${id}` : section
+    window.open(`${window.location.pathname}#${hash}`, '_blank')
   }
 })
 
@@ -72,7 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 })
 
-window.addEventListener('hashchange', () => {
+window.addEventListener('popstate', () => {
   navigateFromHash()
 })
 

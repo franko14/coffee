@@ -29,7 +29,7 @@ export class BlackScraper extends BaseScraper {
       }
     })
 
-    return [...new Set(pages)]
+    return { pages: [...new Set(pages)], firstPageHtml: html }
   }
 
   async parseListingPage(html, _url) {

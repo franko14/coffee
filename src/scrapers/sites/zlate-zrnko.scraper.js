@@ -29,15 +29,10 @@ export class ZlateZrnkoScraper extends WooCommerceScraper {
   }
 
   extractDetailAttributes($) {
-    const baseAttrs = super.extractDetailAttributes($)
-
-    // Woodmart theme may use special attribute display
-    const woodmartAttrs = parseAttributeTable(
+    return parseAttributeTable(
       $,
-      '.woodmart-tab-wrapper .woocommerce-product-attributes tr, .shop_attributes tr'
+      '.woocommerce-product-attributes tr, .woodmart-tab-wrapper .woocommerce-product-attributes tr, .shop_attributes tr, .product_meta span, .product-attributes li'
     )
-
-    return { ...woodmartAttrs, ...baseAttrs }
   }
 
   extractWeightFromPage($) {

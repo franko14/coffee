@@ -34,6 +34,12 @@ const WEIGHT_PATTERNS = [
   /(\d+)\s*kg/i
 ]
 
+export function parseCount(text) {
+  if (!text || typeof text !== 'string') return null
+  const match = text.match(/(\d+)\s*(?:ks|kusov|kus|pcs|pieces|caps|kapsul)/i)
+  return match ? parseInt(match[1], 10) : null
+}
+
 export function parseWeight(text) {
   if (!text || typeof text !== 'string') {
     return null

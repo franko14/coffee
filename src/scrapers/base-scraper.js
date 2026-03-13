@@ -9,6 +9,7 @@ export class BaseScraper {
     this.config = config
     this.log = createChildLogger(`scraper:${shop.slug}`)
     this.scrapingConfig = config.scraping
+    this.shopDomain = shop.url.replace(/^https?:\/\//, '').replace(/^www\./, '')
   }
 
   async scrape() {
@@ -16,10 +17,12 @@ export class BaseScraper {
     const products = []
 
     try {
-      const listingUrls = await this.getListingPages()
+      const { pages: listingUrls, firstPageHtml } = await this.getListingPages()
 
       for (const url of listingUrls) {
-        const html = await this.fetch(url)
+        const html = url === listingUrls[0] && firstPageHtml
+          ? firstPageHtml
+          : await this.fetch(url)
         const productUrls = await this.parseListingPage(html, url)
         this.log.info({ url, count: productUrls.length }, 'Found product links')
 
@@ -56,7 +59,8 @@ export class BaseScraper {
   }
 
   async getListingPages() {
-    return [`${this.shop.url}${this.shop.listingPath}`]
+    const url = `${this.shop.url}${this.shop.listingPath}`
+    return { pages: [url], firstPageHtml: null }
   }
 
   async parseListingPage(_html, _url) {
@@ -68,9 +72,8 @@ export class BaseScraper {
   }
 
   matchesDomain(href) {
-    const shopDomain = this.shop.url.replace(/^https?:\/\//, '').replace(/^www\./, '')
     const hrefDomain = href.replace(/^https?:\/\//, '').replace(/^www\./, '')
-    return hrefDomain.startsWith(shopDomain)
+    return hrefDomain.startsWith(this.shopDomain)
   }
 
   normalizeProduct(rawProduct, url) {

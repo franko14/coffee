@@ -6,6 +6,14 @@ import { parseProductAttributes } from './parsers/product-attributes.parser.js'
 import { parseAttributeTable } from './parsers/attribute-table.parser.js'
 import { DEFAULT_WEIGHT_GRAMS, MAX_DESCRIPTION_LENGTH } from './constants.js'
 
+const OUT_OF_STOCK_INDICATORS = [
+  'vypredané',
+  'vypredane',
+  'out of stock',
+  'sold out',
+  'niet na sklade'
+]
+
 export class WooCommerceScraper extends BaseScraper {
   async getListingPages() {
     const baseUrl = `${this.shop.url}${this.shop.listingPath}`
@@ -31,7 +39,7 @@ export class WooCommerceScraper extends BaseScraper {
       }
     }
 
-    return pages
+    return { pages, firstPageHtml: html }
   }
 
   async parseListingPage(html, _url) {
@@ -115,9 +123,20 @@ export class WooCommerceScraper extends BaseScraper {
     // Check if entire product is out of stock at page level
     const pageOutOfStock = this.isPageOutOfStock($)
 
-    // Check for DOM-based sale prices (some plugins apply discounts at render time)
-    const domSalePrice = this.extractSalePriceFromDom($)
-    const domOriginalPrice = this.extractOriginalPriceFromDom($)
+    // Cache weight — avoids repeated DOM traversals
+    const pageWeight = this.extractWeightFromPage($)
+
+    // Lazy DOM sale price queries — only computed when first accessed
+    let _domPricesComputed = false
+    let _domSalePrice, _domOriginalPrice
+    const getDomPrices = () => {
+      if (!_domPricesComputed) {
+        _domSalePrice = this.extractSalePriceFromDom($)
+        _domOriginalPrice = this.extractOriginalPriceFromDom($)
+        _domPricesComputed = true
+      }
+      return { sale: _domSalePrice, original: _domOriginalPrice }
+    }
 
     const variationForms = $('form.variations_form')
     if (variationForms.length > 0) {
@@ -136,11 +155,14 @@ export class WooCommerceScraper extends BaseScraper {
             // (common with discount plugins that apply at render time)
             let price = jsonPrice
             let originalPrice = isOnSaleInJson ? regularPrice : null
-            if (!isOnSaleInJson && domSalePrice && domOriginalPrice && domOriginalPrice > domSalePrice) {
-              // Only apply if the DOM original matches the JSON price (sanity check)
-              if (Math.abs(domOriginalPrice - jsonPrice) < 0.5) {
-                price = domSalePrice
-                originalPrice = domOriginalPrice
+            if (!isOnSaleInJson) {
+              const { sale, original } = getDomPrices()
+              if (sale && original && original > sale) {
+                // Only apply if the DOM original matches the JSON price (sanity check)
+                if (Math.abs(original - jsonPrice) < 0.5) {
+                  price = sale
+                  originalPrice = original
+                }
               }
             }
 
@@ -164,7 +186,7 @@ export class WooCommerceScraper extends BaseScraper {
     if (variants.length === 0 && ldData?.offers?.length > 0) {
       for (const offer of ldData.offers) {
         variants.push({
-          weightGrams: this.extractWeightFromPage($),
+          weightGrams: pageWeight,
           grind: null,
           label: null,
           price: offer.price,
@@ -178,14 +200,14 @@ export class WooCommerceScraper extends BaseScraper {
 
     if (variants.length === 0) {
       const price = this.extractPriceFromDom($)
-      const originalPrice = this.extractOriginalPriceFromDom($)
+      const { original } = getDomPrices()
       if (price) {
         variants.push({
-          weightGrams: this.extractWeightFromPage($),
+          weightGrams: pageWeight,
           grind: null,
           label: null,
           price,
-          originalPrice: originalPrice && originalPrice > price ? originalPrice : null,
+          originalPrice: original && original > price ? original : null,
           subscriptionPrice: null,
           inStock: !pageOutOfStock,
           sku: null
@@ -285,18 +307,9 @@ export class WooCommerceScraper extends BaseScraper {
       return true
     }
 
-    // Check for "Vypredané" badge or text (Slovak for "Sold out")
-    const outOfStockIndicators = [
-      'vypredané',
-      'vypredane',
-      'out of stock',
-      'sold out',
-      'niet na sklade'
-    ]
-
     // Check stock status element specifically
     const stockStatus = $('.stock, .availability, .product-stock-status, .out-of-stock').text().toLowerCase()
-    for (const indicator of outOfStockIndicators) {
+    for (const indicator of OUT_OF_STOCK_INDICATORS) {
       if (stockStatus.includes(indicator)) {
         return true
       }
@@ -304,7 +317,7 @@ export class WooCommerceScraper extends BaseScraper {
 
     // Check product badges for out-of-stock badge
     const badgeText = $('.product-badges, .entry-product-badges').text().toLowerCase()
-    for (const indicator of outOfStockIndicators) {
+    for (const indicator of OUT_OF_STOCK_INDICATORS) {
       if (badgeText.includes(indicator)) {
         return true
       }

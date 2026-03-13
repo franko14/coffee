@@ -2,6 +2,8 @@ import { TripleFiveScraper } from './sites/triple-five.scraper.js'
 import { BlackScraper } from './sites/black.scraper.js'
 import { GoriffeeScraper } from './sites/goriffee.scraper.js'
 import { ZlateZrnkoScraper } from './sites/zlate-zrnko.scraper.js'
+import { ConceptCoffeeScraper } from './sites/concept-coffee.scraper.js'
+import { JungleRoasteryScraper } from './sites/jungle-roastery.scraper.js'
 import { BlogOKaveScraper } from './sites/blog-okave.scraper.js'
 
 const SCRAPER_MAP = {
@@ -9,6 +11,8 @@ const SCRAPER_MAP = {
   'black-sk': BlackScraper,
   'goriffee': GoriffeeScraper,
   'zlate-zrnko': ZlateZrnkoScraper,
+  'concept-coffee': ConceptCoffeeScraper,
+  'jungle-roastery': JungleRoasteryScraper,
   'blog-okave': BlogOKaveScraper
 }
 

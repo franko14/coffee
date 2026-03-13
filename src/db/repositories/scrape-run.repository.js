@@ -20,6 +20,11 @@ export function createScrapeRunRepository(db) {
     `),
     findByShop: db.prepare(`
       SELECT * FROM scrape_runs WHERE shop_slug = ? ORDER BY started_at DESC LIMIT ?
+    `),
+    getLastCompleted: db.prepare(`
+      SELECT finished_at FROM scrape_runs
+      WHERE status = 'success' AND finished_at IS NOT NULL
+      ORDER BY finished_at DESC LIMIT 1
     `)
   }
 
@@ -42,6 +47,11 @@ export function createScrapeRunRepository(db) {
 
     findByShop(shopSlug, limit = 10) {
       return stmts.findByShop.all(shopSlug, limit)
+    },
+
+    getLastScanTime() {
+      const row = stmts.getLastCompleted.get()
+      return row?.finished_at || null
     }
   }
 }

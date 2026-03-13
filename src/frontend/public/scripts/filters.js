@@ -41,6 +41,8 @@ async function loadAlerts() {
   const container = document.getElementById('alerts-list')
   container.innerHTML = '<div class="loading">Loading alerts...</div>'
 
+  loadLastScanTime()
+
   try {
     const result = await api.get('/api/alerts?limit=100')
     const alerts = result.data
@@ -120,4 +122,47 @@ async function loadAlerts() {
   } catch (err) {
     container.innerHTML = `<div class="empty-state">Error: ${esc(err.message)}</div>`
   }
+}
+
+async function loadLastScanTime() {
+  const indicator = document.getElementById('last-scan-indicator')
+  if (!indicator) return
+
+  try {
+    const result = await api.get('/api/alerts/last-scan')
+    const { lastScanTime } = result.data
+
+    if (!lastScanTime) {
+      indicator.innerHTML = '<span class="scan-status scan-unknown">No scans yet</span>'
+      return
+    }
+
+    const scanDate = new Date(lastScanTime + 'Z')
+    const now = new Date()
+    const diffMs = now - scanDate
+    const diffHours = diffMs / (1000 * 60 * 60)
+
+    const timeStr = formatRelativeTime(scanDate)
+    const statusClass = diffHours < 24 ? 'scan-recent' : diffHours < 48 ? 'scan-warning' : 'scan-stale'
+
+    indicator.innerHTML = `<span class="scan-status ${statusClass}">Last scan: ${timeStr}</span>`
+  } catch {
+    indicator.innerHTML = ''
+  }
+}
+
+function formatRelativeTime(date) {
+  const now = new Date()
+  const diffMs = now - date
+  const diffMins = Math.floor(diffMs / (1000 * 60))
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+
+  if (diffMins < 1) return 'just now'
+  if (diffMins < 60) return `${diffMins}m ago`
+  if (diffHours < 24) return `${diffHours}h ago`
+  if (diffDays === 1) return 'yesterday'
+  if (diffDays < 7) return `${diffDays} days ago`
+
+  return date.toLocaleDateString('sk-SK', { day: 'numeric', month: 'short' })
 }

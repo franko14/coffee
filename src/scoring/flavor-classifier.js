@@ -117,7 +117,7 @@ export function extractCleanTastingNotes(product) {
 }
 
 function isJunkNote(text, product) {
-  if (!text || text.length < 3) return true
+  if (!text || typeof text !== 'string' || text.length < 3) return true
   const lower = text.toLowerCase()
   const shopName = (product.shop_name || '').toLowerCase()
   const productName = (product.name || '').toLowerCase()

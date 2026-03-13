@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { positiveIntParam } from '../validation/schemas.js'
 
-export function createAlertRoutes(alertRepo) {
+export function createAlertRoutes(alertRepo, scrapeRunRepo) {
   const router = Router()
 
   const alertsQuerySchema = z.object({
@@ -38,6 +38,14 @@ export function createAlertRoutes(alertRepo) {
       success: true,
       data: alerts,
       meta: { total: alerts.length, unreadCount }
+    })
+  })
+
+  router.get('/last-scan', (_req, res) => {
+    const lastScanTime = scrapeRunRepo.getLastScanTime()
+    res.json({
+      success: true,
+      data: { lastScanTime }
     })
   })
 

@@ -98,8 +98,9 @@ export function createVariantRepository(db, { stockChangeRepo } = {}) {
     },
 
     markMissingAsOutOfStock(productId, foundVariantIds) {
-      // Mark all variants for this product as out of stock if they weren't found in the current scrape
-      // When foundVariantIds is empty, mark ALL variants as out of stock
+      // Mark variants not found in current scrape as out of stock.
+      // IMPORTANT: Caller should NOT call this with empty foundVariantIds array,
+      // as that indicates a scraping failure rather than all variants being removed.
       stmts.markOutOfStock.run(productId, JSON.stringify(foundVariantIds))
     },
 
