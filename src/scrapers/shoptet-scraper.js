@@ -331,7 +331,7 @@ export class ShoptetScraper extends BaseScraper {
       const paramNameLower = param.name.toLowerCase()
 
       if (/hmotnos[tť]|weight|ve[ľl]kos[tť]|grams|v[áa]ha/.test(paramNameLower)) {
-        weightGrams = parseWeight(valueLabel)
+        weightGrams = parseWeight(valueLabel) || parseCount(valueLabel)
       } else if (/pra[žz]enie|roast|mletie|grind/.test(paramNameLower)) {
         const lower = valueLabel.toLowerCase()
         if (/filter/.test(lower)) grind = 'filter'
